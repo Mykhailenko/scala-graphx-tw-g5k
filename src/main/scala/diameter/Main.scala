@@ -1,4 +1,4 @@
-package ololo
+package diameter
 
 import org.apache.spark.SparkContext._
 import org.apache.spark._

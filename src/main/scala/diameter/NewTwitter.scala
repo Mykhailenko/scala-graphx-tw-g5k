@@ -1,4 +1,4 @@
-package ololo
+package diameter
 
 import org.apache.spark.SparkContext._
 import org.apache.spark._
@@ -10,30 +10,33 @@ import java.io.File
 import java.io.PrintWriter
 import java.io.FileWriter
 
-object FOurDiameterHeuristic {
+object NewTwitter {
 
   def main(args: Array[String]) {
 
     if (args.length != 2) {
       System.err.println(
-        "Wrong argument number. Should be 2. Usage: <path_to_grpah> <path_to_result>")
+        "Usage: Ololo <path_to_grpah> <path_to_result>")
       System.exit(1)
     }
 
-    //    System.setProperty("spark.local.dir", "/tmp")
-    //    System.setProperty("spark.executor.memory", "29g")
+    System.setProperty("spark.local.dir", "/tmp")
+    System.setProperty("spark.executor.memory", "29g")
 
-    val sc = new SparkContext(new SparkConf()
+    val conf = new SparkConf()
+      .setAppName("Experiment avec la Twitter")
       .setSparkHome(System.getenv("SPARK_HOME"))
-      .setJars(SparkContext.jarOfClass(this.getClass).toList))
+      .setJars(SparkContext.jarOfClass(this.getClass).toList)
+
+    val sc = new SparkContext(conf)
 
     val graph = GraphLoader.edgeListFile(sc, args(0), true, 8)
 
     val plaineVertex: Array[(VertexId, Int)] = graph.vertices.take(10)
 
-    def excentrica(sourceId: VertexId): (VertexId, Double) = {
+    def excentrica(sourceId: VertexId): Double = {
       val initialGraph = graph.mapVertices((id, _) => if (id == sourceId) 0 else Double.PositiveInfinity)
-      val shortestPathGraph = initialGraph.pregel(Double.PositiveInfinity)(
+      val sssp = initialGraph.pregel(Double.PositiveInfinity)(
 
         (id, dist, newDist) => math.min(dist, newDist), // Vertex Program
 
@@ -47,7 +50,7 @@ object FOurDiameterHeuristic {
 
         (a, b) => math.min(a, b) // Merge Message
         )
-      shortestPathGraph.vertices.filter(distance => distance._2 != Double.PositiveInfinity).collect.sortBy(v => v._2).reverse.head
+      sssp.vertices.filter(distance => distance._2 != Double.PositiveInfinity).collect.sortBy(v => v._2).reverse.head._2
     }
     //"/user/hmykhail/home/phd/rs.txt"
     val file = new File(args(1));

@@ -10,7 +10,7 @@ import java.io.File
 import java.io.PrintWriter
 import java.io.FileWriter
 
-object Degree {
+object LoadAndCalculate {
   def main(args: Array[String]) {
 
     if (args.length != 2) {

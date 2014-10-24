@@ -21,7 +21,7 @@ object NewTwitter {
     }
 
     System.setProperty("spark.local.dir", "/tmp")
-    System.setProperty("spark.executor.memory", "29g")
+//    System.setProperty("spark.executor.memory", "29g")
 
     val conf = new SparkConf()
       .setAppName("Experiment avec la Twitter")
@@ -32,7 +32,7 @@ object NewTwitter {
 
     val graph = GraphLoader.edgeListFile(sc, args(0), true, 8)
 
-    val plaineVertex: Array[(VertexId, Int)] = graph.vertices.take(10)
+    val plaineVertex: Array[(VertexId, Int)] = graph.vertices.take(1)
 
     def excentrica(sourceId: VertexId): Double = {
       val initialGraph = graph.mapVertices((id, _) => if (id == sourceId) 0 else Double.PositiveInfinity)
@@ -59,6 +59,8 @@ object NewTwitter {
 
       out.println(sourceId + " excentric= " + excentrica(sourceId))
     }
+    out.println("Vertices  " + graph.numVertices)
+    out.println("Edges " + graph.numEdges)
     out.close();
   }
 }

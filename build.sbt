@@ -1,4 +1,4 @@
-name := "Ololo Project"
+name := "scala-graphx-tw-g5k"
 
 version := "1.0"
 

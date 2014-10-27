@@ -16,12 +16,9 @@ object NewTwitter {
 
     if (args.length != 2) {
       System.err.println(
-        "Usage: Ololo <path_to_grpah> <path_to_result>")
+        "Usage: <path_to_grpah> <path_to_result>")
       System.exit(1)
     }
-
-    System.setProperty("spark.local.dir", "/tmp")
-//    System.setProperty("spark.executor.memory", "29g")
 
     val conf = new SparkConf()
       .setAppName("Experiment avec la Twitter")
@@ -52,7 +49,7 @@ object NewTwitter {
         )
       sssp.vertices.filter(distance => distance._2 != Double.PositiveInfinity).collect.sortBy(v => v._2).reverse.head._2
     }
-    //"/user/hmykhail/home/phd/rs.txt"
+
     val file = new File(args(1));
     val out = new PrintWriter(new FileWriter(file));
     for ((sourceId, _) <- plaineVertex) {

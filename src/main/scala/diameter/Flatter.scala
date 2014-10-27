@@ -13,12 +13,9 @@ object Flatter {
 
     if (args.length != 2) {
       System.err.println(
-        "Usage: Ololo <graph> <flatGraph> ")
+        "Usage: <graph> <flatGraph> ")
       System.exit(1)
     }
-
-    System.setProperty("spark.local.dir", "/tmp")
-    System.setProperty("spark.executor.memory", "29g")
 
     val conf = new SparkConf()
       .setAppName("Flat")

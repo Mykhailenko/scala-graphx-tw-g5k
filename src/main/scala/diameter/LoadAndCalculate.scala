@@ -18,12 +18,9 @@ object LoadAndCalculate {
         "Usage: Ololo <path_to_grpah> <path_to_result>")
       System.exit(1)
     }
-    System.setProperty("spark.local.dir", "/tmp")
-    System.setProperty("spark.executor.memory", "29g")
-    System.setProperty("spark.eventLog.enabled", "true")
-//    System.setProperty("spark.shuffle.consolidateFiles", "true")
-//    System.setProperty("spark.worker.timeout", "120")
-//    System.setProperty("spark.akka.frameSize", "30")
+//    System.setProperty("spark.local.dir", "/tmp")
+//    System.setProperty("spark.executor.memory", "29g")
+//    System.setProperty("spark.eventLog.enabled", "true")
 
     val file = new File(args(1));
     val ola = new PrintWriter(new FileWriter(file));
@@ -35,7 +32,7 @@ object LoadAndCalculate {
 
     val sc = new SparkContext(conf)
     ola.println("context was created");
-    //"/user/hmykhail/home/phd/tit"
+
     val relationships: RDD[Edge[Int]] =
       sc.textFile(args(0)).flatMap { line =>
         val fields = line.split(" ")

@@ -20,9 +20,6 @@ object FOurDiameterHeuristic {
       System.exit(1)
     }
 
-    //    System.setProperty("spark.local.dir", "/tmp")
-    //    System.setProperty("spark.executor.memory", "29g")
-
     val sc = new SparkContext(new SparkConf()
       .setSparkHome(System.getenv("SPARK_HOME"))
       .setJars(SparkContext.jarOfClass(this.getClass).toList))

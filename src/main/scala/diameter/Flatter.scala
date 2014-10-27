@@ -20,8 +20,6 @@ object Flatter {
     System.setProperty("spark.local.dir", "/tmp")
     System.setProperty("spark.executor.memory", "29g")
 
-    //    val file = new File(args(1));
-    //    val out = new PrintWriter(new FileWriter(file));
     val conf = new SparkConf()
       .setAppName("Flat")
       .setSparkHome(System.getenv("SPARK_HOME"))
@@ -35,12 +33,5 @@ object Flatter {
     })
 
     relationships.coalesce(1, true).saveAsTextFile(args(1))
-    //    val arr: Array[String] = relationships.collect
-    //    for (line <- arr) {
-    //      out.println(line)
-    //    }
-    //
-    //    out.flush();
-    //    out.close();
   }
 }

@@ -28,6 +28,7 @@ object FOurDiameterHeuristic {
 
     val plaineVertex: Array[(VertexId, Int)] = graph.vertices.take(10)
 
+    
     def excentrica(sourceId: VertexId): (VertexId, Double) = {
       val initialGraph = graph.mapVertices((id, _) => if (id == sourceId) 0 else Double.PositiveInfinity)
       val shortestPathGraph = initialGraph.pregel(Double.PositiveInfinity)(

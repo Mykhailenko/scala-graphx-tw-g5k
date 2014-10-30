@@ -26,7 +26,7 @@ object LoadAndCalculate {
     val ola = new PrintWriter(new FileWriter(file));
     val conf = new SparkConf()
       .setAppName("Degree")
-      .setSparkHome(System.getenv("SPARK_HOME"))
+//      .setSparkHome(System.getenv("SPARK_HOME"))
       .setJars(SparkContext.jarOfClass(this.getClass).toList)
     ola.println("conf was created");
 

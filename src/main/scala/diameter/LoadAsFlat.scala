@@ -27,7 +27,7 @@ object LoadAsFlat {
     val sc = new SparkContext(conf)
 
     val graph = GraphLoader.edgeListFile(sc, args(0), true, edgeStorageLevel = StorageLevel.MEMORY_AND_DISK,
-      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK, minEdgePartitions = 1000).cache()
+      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK, minEdgePartitions = 10).cache()
 
     val file = new File(args(1));
     val out = new PrintWriter(new FileWriter(file));

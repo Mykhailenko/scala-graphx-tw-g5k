@@ -17,7 +17,7 @@ object FourDiameterHeuristic {
 
     if (args.length != 2) {
       System.err.println(
-        "Wrong argument number. Should be 2. Usage: <path_to_grpah> <path_to_result>")
+        "Wrong argument number. Should be 2. Usage: <path_to_grpah> <path_to_result> ")
       System.exit(1)
     }
     val sc = new SparkContext(new SparkConf()

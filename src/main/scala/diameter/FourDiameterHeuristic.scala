@@ -15,14 +15,12 @@ object FourDiameterHeuristic {
 
   def main(args: Array[String]) {
 
-    if (args.length != 2) {
-      System.err.println(
-        "Wrong argument number. Should be 2. Usage: <path_to_grpah> <path_to_result> ")
-      System.exit(1)
-    }
+    require(args.length == 2, "Wrong argument number. Should be 2. Usage: <path_to_grpah> <path_to_result> ")
+
     val sc = new SparkContext(new SparkConf()
       .setSparkHome(System.getenv("SPARK_HOME"))
       .setJars(SparkContext.jarOfClass(this.getClass).toList))
+
     val file = new File(args(1));
     val out = new PrintWriter(new FileWriter(file));
 
@@ -34,20 +32,38 @@ object FourDiameterHeuristic {
       import logger._
 
       logGraphLoading {
-        graph = GraphLoader.edgeListFile(sc, args(0), true, 8)
-        plaineVertex = graph.vertices.take(5)
+
+        graph = GraphLoader.edgeListFile(sc, args(0), true, 24)
+        plaineVertex = graph.vertices.take(2)
+        for((id, value) <- plaineVertex){
+          out.println("id = " + id + "; value = " + value)
+        }
+
       }
       logAlgorithExecution {
-        result = for ((sourceId, _) <- plaineVertex) yield excentrica(sourceId) 
-      }
-       
-      logResultSaving{
-        for((sourceId, excentrica) <- result){
-    	  out.println(sourceId + " excentric= " + excentrica)
-    	  out.close();
+        result = for ((sourceId, _) <- plaineVertex) yield {
+          out.println("source = " + sourceId)
+          excentrica(sourceId)
         }
       }
+
+      logPartitioning{
+
+
+
+      }
+      logCalculationAfterPartitioning(graph)
+
+      logResultSaving{
+        for((sourceId, excentrica) <- result){
+    	    out.println(sourceId + " excentric= " + excentrica)
+        }
+        out.println("GRAPHX: Number of vertices " + graph.vertices.count)
+        out.println("GRAPHX: Number of edges " + graph.edges.count)
+        out.close()
+      }
     }
+    
 
     def excentrica(sourceId: VertexId): (VertexId, Double) = {
       val initialGraph = graph.mapVertices((id, _) => if (id == sourceId) 0 else Double.PositiveInfinity)
@@ -56,8 +72,8 @@ object FourDiameterHeuristic {
         (id, dist, newDist) => math.min(dist, newDist), // Vertex Program
 
         triplet => { // Send Message
-          if (triplet.srcAttr + triplet.attr < triplet.dstAttr) {
-            Iterator((triplet.dstId, triplet.srcAttr + triplet.attr))
+          if (triplet.srcAttr + 1 < triplet.dstAttr) {
+            Iterator((triplet.dstId, triplet.srcAttr + 1))
           } else {
             Iterator.empty
           }

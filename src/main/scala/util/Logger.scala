@@ -1,10 +1,12 @@
 package util
 
+import org.apache.spark.graphx.Graph
+
 trait Logger {
 
   protected def log(key: String, value: String)
 
-  def logtime(prefix: String)(body: => Unit) = {
+  protected def logtime(prefix: String)(body: => Unit) = {
     log(prefix + ".start", System.currentTimeMillis.toString)
     try {
       body
@@ -20,6 +22,10 @@ trait Logger {
   def logAlgorithExecution = logtime("AlgorithExecution")_
 
   def logResultSaving = logtime("ResultSaving")_
+
+  def logPartitioning (body : => Unit)
+  
+  def logCalculationAfterPartitioning(graph : Graph[Int, Int])
 
   def save
 

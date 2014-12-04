@@ -11,16 +11,11 @@ import java.io.FileWriter
 object Flatter {
   def main(args: Array[String]) {
 
-    if (args.length != 2) {
-      System.err.println(
-        "Usage: <graph> <flatGraph> ")
-      System.exit(1)
-    }
+    require (args.length == 2, "Usage: <graph> <flatGraph> ")
 
     val conf = new SparkConf()
-      .setAppName("Flat")
-//      .setSparkHome(System.getenv("SPARK_HOME"))
-      .setJars(SparkContext.jarOfClass(this.getClass).toList)
+    		   .setAppName("Flat")
+    		   .setJars(SparkContext.jarOfClass(this.getClass).toList)
 
     val sc = new SparkContext(conf)
 

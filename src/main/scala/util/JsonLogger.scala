@@ -27,7 +27,7 @@ case class JsonLogger(sparkContex: SparkContext, path: String = "./")(body: Json
 
   }
 
-  def fileName: String = (System.nanoTime() * (new Random()).nextLong() % 1000).toString + ".json"
+  def fileName: String = "0" + (new Random().nextLong() % 1000).toString + ".json"
 
   def save {
     val out = new PrintWriter(new FileWriter(new File(path + fileName)));
@@ -43,8 +43,11 @@ case class JsonLogger(sparkContex: SparkContext, path: String = "./")(body: Json
   }
 
   def calculateReplicatoins(graph: Graph[Int, Int]) = {
-    val replic: Double = graph.edges.partitionsRDD.mapValues((V) => (Set(V.srcIds: _*) ++ Set(V.dstIds: _*)).size).map(a => a._2).reduce((a, b) => a + b)
-    replic / graph.numVertices
+    val q = graph.edges.partitionsRDD
+    val p = q.mapValues((V) => (Set(V.srcIds: _*) ++ Set(V.dstIds: _*)).size)
+    val w = p.map(a => a._2)
+    val replic: Double = w.reduce((a, b) => a + b)
+    replic 
   }
   def numberOfVerices(graph: Graph[Int, Int]): Long = {
     graph.numVertices

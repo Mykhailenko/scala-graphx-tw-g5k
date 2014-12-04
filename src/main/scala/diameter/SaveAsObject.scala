@@ -14,21 +14,15 @@ import java.io.FileWriter
 object SaveAsObject {
   def main(args: Array[String]) {
 
-    if (args.length != 2) {
-      System.err.println(
-        "Usage: <flatGraph> <objectGraph> ")
-      System.exit(1)
-    }
+    require (args.length == 2, "Usage: <flatGraph> <objectGraph> ")
 
-    val conf = new SparkConf()
-      .setAppName("Flat")
-      .setJars(SparkContext.jarOfClass(this.getClass).toList)
-
-    val sc = new SparkContext(conf)
+    val sc = new SparkContext(new SparkConf()
+    		.setAppName("Flat")
+    		.setJars(SparkContext.jarOfClass(this.getClass).toList))
 
     val graph = GraphLoader.edgeListFile(sc, args(0), true, edgeStorageLevel = StorageLevel.MEMORY_AND_DISK,
-      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK, minEdgePartitions = 1000).cache()
+      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK, minEdgePartitions = 240).cache()
 
-    graph.edges.coalesce(1, true).saveAsObjectFile(args(1))
+    graph.edges.saveAsObjectFile(args(1))
   }
 }

@@ -86,8 +86,8 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
   }
 
   def calculateBalance(graph: Graph[Int, Int]): Double = {
-    val maxPart: Long = maxPartitionSize(graph)
-    val averagePart: Long = (numberOfEdges(graph) / partitioningNumber(graph))
+    val maxPart: Double = maxPartitionSize(graph)
+    val averagePart: Double = (numberOfEdges(graph) / partitioningNumber(graph))
     maxPart / averagePart
   }
   def numberOfEdgesInEachPartition(graph: Graph[Int, Int]): Array[Int] = {
@@ -122,7 +122,7 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
     log("vertexCut", (calculateSetOfVerticesCatted(graph).size).toString)
     log("vertexNonCutted", (calculateSetOfVerticesNotCatted(graph).size).toString)
     log("numberVertices", numberOfVerices(graph).toString)
-    log("maxPartition", maxPartitionSize(graph).toString)
+    log("largestPartition", maxPartitionSize(graph).toString)
     log("numberEdges", numberOfEdges(graph).toString)
     log("numberPartitions", partitioningNumber(graph).toString)
     log("edgeInPartitiones", numberOfEdgesInEachPartition(graph).toList.mkString(", "))

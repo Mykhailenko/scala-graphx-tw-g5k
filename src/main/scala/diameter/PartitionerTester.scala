@@ -17,7 +17,7 @@ object PartitionerTester {
 
   def main(args: Array[String]) {
 
-    require(args.length == 4, "Wrong argument number. Should be 3. Usage: <path_to_grpah> <partiotioner_name> <filename_with_result> <minEdgePartitions>")
+    require(args.length == 4, "Wrong argument number. Should be 4. Usage: <path_to_grpah> <partiotioner_name> <filename_with_result> <minEdgePartitions>")
 
     val sc = new SparkContext(new SparkConf()
       .setSparkHome(System.getenv("SPARK_HOME"))
@@ -36,9 +36,7 @@ object PartitionerTester {
       }
 
       logPartitioning {
-        graph.partitionBy(PartitionStrategy.fromString(partitionerName))
-        // just to push partitioner to execute
-        graph.collectEdges(EdgeDirection.In)
+        graph = graph.partitionBy(PartitionStrategy.fromString(partitionerName))
       }
       logCalculationAfterPartitioning(graph)
 

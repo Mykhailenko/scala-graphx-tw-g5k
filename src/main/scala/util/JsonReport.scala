@@ -13,7 +13,7 @@ class JsonReport (path : String) extends Report {
   private def getLong(key : String) : Long = {
     (map getOrElse (key, "0") ).toLong
   }
-  private def get(key : String) = {
+  def get(key : String) = {
     map getOrElse (key, "")
   }
 
@@ -33,4 +33,5 @@ class JsonReport (path : String) extends Report {
 
   def wholeTime : Long = graphLoadingTime + algorithExecutionTime + resultSavingTime
   def name : String = get("name")
+  
 }

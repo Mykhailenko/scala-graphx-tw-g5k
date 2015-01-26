@@ -15,10 +15,9 @@ import DefaultJsonProtocol._
   2 + 2                                           //> res0: Int(4) = 4
   
  import util.CSVChartData
- val c = new CSVChartData[Double]("astroph", "vertexCut")
-                                                  //> c  : util.CSVChartData[Double] = util.CSVChartData@3a25b987
- c.addPoints("RandomHuyandom", Array[(Int, Double)]((1, 2.0),(2, 10.0)))
- c.addPoints("RandomHuyand2om", Array[(Int, Double)]((1, 2.2),(2, 104.0)))
+ val c = new CSVChartData("astroph", "vertexCut") //> c  : util.CSVChartData = util.CSVChartData@580c4720
+ c.addPoints("RandomHuyandom", Array[(Int, String)]((1, "2.0"),(2, "10.0")))
+ c.addPoints("RandomHuyand2om", Array[(Int, String)]((1, "2.2"),(2, "104.0")))
  c.numberOfPartitioners                           //> res1: Int = 2
  c.numberOfExperiments                            //> res2: Int = 2
  

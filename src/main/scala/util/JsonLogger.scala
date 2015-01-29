@@ -31,8 +31,6 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
   //  def fileName: String = "0" + (new Random().nextLong() % 1000).toString + ".json"
 
   def save {
-    println("path: " + path)
-    println("fileName: " + fileName)
 
     val out = new PrintWriter(new FileWriter(new File(path + fileName)));
     out println "{"
@@ -46,22 +44,53 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
     out close
   }
 
+  def saveCSV(graph: Graph[Int, Int]) {
+    val out = new PrintWriter(new FileWriter(new File(path + fileName + ".csv")));
+
+    out.println("Vertex degree distribution , ")
+    out.println("Vertex degree, number of vertices")
+
+    var data = calculcateAverageDegree(graph)
+
+    for (line <- data) {
+      out.println(line._1 + " , " + line._2)
+    }
+
+    out close
+  }
+
+  def calculcateAverageDegree(graph: Graph[Int, Int]): Array[(Int, Int)] = {
+    graph.degrees.collect.groupBy(_._2).map(a => (a._1, a._2.length)).toArray.sortWith(_._1 < _._1)
+  }
+
   def calculateSetOfVerticesNotCatted(graph: Graph[Int, Int]): Set[VertexId] = {
     val q = graph.edges.partitionsRDD
     val p = q.mapValues((V) => (Set(V.srcIds: _*) ++ Set(V.dstIds: _*)))
     val w = p.map(a => a._2)
-    val n = w.reduce(
-      (a, b) =>
-        a.union(b).diff(a.intersect(b))
-        )
-    n
+    //    val n = w.reduce(
+    //      (a, b) =>
+    //        a.union(b).diff(a.intersect(b))
+    //        )
+    var ss = w.collect
+    var qq = ss.foldLeft(List[VertexId]())((a, b) => a.toList ++ b.toList)
+    var tr = qq.groupBy(identity).mapValues(v => v.length)
+    var result = tr.filter(a => a._2 == 1).map(x => x._1).toSet
+
+    val out = new PrintWriter(new FileWriter(new File("./debugmfk")));
+    out.println("set of non cutted vertices")
+    for (id <- result) {
+      out.println(id)
+    }
+    out.flush
+    out.close
+    result
   }
 
-  def calculateSetOfVertices(graph: Graph[Int, Int]): Set[VertexId]= {
-    val ar : Array[VertexId] = graph.vertices.collect.map( id => id._1)
-    Set(ar : _*)
+  def calculateSetOfVertices(graph: Graph[Int, Int]): Set[VertexId] = {
+    val ar: Array[VertexId] = graph.vertices.collect.map(id => id._1)
+    Set(ar: _*)
   }
-  
+
   def calculateReplicatoins(graph: Graph[Int, Int]) = {
     val q = graph.edges.partitionsRDD
     val p = q.mapValues((V) => (Set(V.srcIds: _*) ++ Set(V.dstIds: _*)).size)
@@ -77,7 +106,7 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
     graph.numEdges
   }
 
-  def partitioningNumber(graph: Graph[Int, Int]) : Long = {
+  def partitioningNumber(graph: Graph[Int, Int]): Long = {
     graph.edges.partitionsRDD.count
   }
 
@@ -96,11 +125,10 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
 
   }
 
-  
   def calculateSetOfVerticesCatted(graph: Graph[Int, Int]): Set[VertexId] = {
     calculateSetOfVertices(graph).diff(calculateSetOfVerticesNotCatted(graph))
   }
-  
+
   def communicationalCost(graph: Graph[Int, Int]): Long = {
     val temp = calculateSetOfVerticesNotCatted(graph)
     // Sum of Fi over i
@@ -111,9 +139,10 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
     val s = z.map(a => a.size)
     s.reduce(_ + _)
   }
-  
+
   def NSTDEV(graph: Graph[Int, Int]): Double = {
-    Math.sqrt(numberOfEdgesInEachPartition(graph).toList.map(e => Math.pow(e * partitioningNumber(graph) / numberOfEdges(graph) - 1, 2)).sum / partitioningNumber(graph))
+    var ar : List[Double] = numberOfEdgesInEachPartition(graph).toList.map(a => a.toDouble)
+    Math.sqrt(ar.map(e => Math.pow(e * partitioningNumber(graph) / numberOfEdges(graph) - 1, 2)).sum / partitioningNumber(graph))
   }
   def logCalculationAfterPartitioning(graph: Graph[Int, Int]) = {
     log("replicationFactor", (calculateReplicatoins(graph) / numberOfVerices(graph)).toString)
@@ -127,6 +156,7 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
     log("numberPartitions", partitioningNumber(graph).toString)
     log("edgeInPartitiones", numberOfEdgesInEachPartition(graph).toList.mkString(", "))
     log("NSTDEV", NSTDEV(graph).toString)
+    saveCSV(graph)
   }
 
   override def logPartitioning(body: => Unit) = {

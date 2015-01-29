@@ -33,7 +33,7 @@ object RaportMaker {
     for(p <- graph.listFiles() if p.isDirectory()){
       val partitionName = p.getName()
       var arr = Array[(Int, String)]()
-      for(cas <- p.listFiles() if cas.isFile()){
+      for(cas <- p.listFiles() if cas.isFile() && cas.getName().endsWith(".json")){
         val partitionNumber = cas.getName().substring(0, cas.getName().length() - ".json".length).toInt
         val metricValue = new JsonReport(cas.getAbsolutePath()).get(metricName)
         arr = arr :+ (partitionNumber, metricValue)

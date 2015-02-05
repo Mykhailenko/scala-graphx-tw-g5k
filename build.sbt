@@ -13,7 +13,7 @@ libraryDependencies += "org.apache.spark" %% "spark-graphx" % "1.1.0"
 
 libraryDependencies += "io.spray" %%  "spray-json" % "1.3.1"
 
-mainClass in Compile := Some("util.RaportMaker")
+mainClass in Compile := Some("util.ProducteurDesReport")
 
 resolvers += "Akka Repository" at "http://repo.akka.io/releases/"
 

@@ -109,7 +109,7 @@ object s {
   m.find()                                        //> res13: Boolean = true
   m.group(1)                                      //> res14: String = email-enronD
   
-  RaportMaker.pezdoit("/user/hmykhail/home/phd/reports/report040215/report040215")
+  var data = ProducteurDesReport.getMaps("/user/hmykhail/home/phd/reports/report040215/report040215")
                                                   //> at least we have data [Lscala.Tuple2;@1f78e951
                                                   //| at least we have data [Lscala.Tuple2;@4fa8b45d
                                                   //| at least we have data [Lscala.Tuple2;@83805f9

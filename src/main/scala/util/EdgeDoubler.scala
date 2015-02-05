@@ -13,7 +13,7 @@ object EdgeDoubler {
     var lines = Source.fromFile(args(0)).getLines
     for (line <- lines if !line.isEmpty()) {
       out.println(line)
-      out.println(line.split("\\W+").reverse.mkString(" "))
+      out.println(line.split("\\W+").reverse.mkString("\t"))
     }
 
     out close

@@ -156,7 +156,7 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
     log("numberPartitions", partitioningNumber(graph).toString)
     log("edgeInPartitiones", numberOfEdgesInEachPartition(graph).toList.mkString(", "))
     log("NSTDEV", NSTDEV(graph).toString)
-    saveCSV(graph)
+//    saveCSV(graph)
   }
 
   override def logPartitioning(body: => Unit) = {

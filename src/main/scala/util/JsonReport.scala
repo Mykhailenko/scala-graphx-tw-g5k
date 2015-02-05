@@ -10,6 +10,7 @@ class JsonReport (path : String) extends Report {
 
   val map = scala.io.Source.fromFile(path).mkString.parseJson.convertTo[Map[String, String]]
 
+  
   private def getLong(key : String) : Long = {
     (map getOrElse (key, "0") ).toLong
   }

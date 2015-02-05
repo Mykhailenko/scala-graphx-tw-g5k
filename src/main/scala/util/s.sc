@@ -13,7 +13,7 @@ object s {
   2 + 2                                           //> res0: Int(4) = 4
 
   import util.CSVChartData
-  val c = new CSVChartData("astroph", "vertexCut")//> c  : util.CSVChartData = util.CSVChartData@4c8d74b
+  val c = new CSVChartData("astroph", "vertexCut")//> c  : util.CSVChartData = util.CSVChartData@6b38c54e
   c.addPoints("RandomHuyandom", Array[(Int, String)]((1, "2.0"), (2, "10.0")))
   c.addPoints("RandomHuyand2om", Array[(Int, String)]((1, "2.2"), (2, "104.0")))
   c.numberOfPartitioners                          //> res1: Int = 2
@@ -54,7 +54,7 @@ object s {
   var mmm = Map[Int, Int] ()                      //> mmm  : scala.collection.immutable.Map[Int,Int] = Map()
    def remove(num: Int, list: List[Int]) = (list take num) ++ (list drop (num + 1))
                                                   //> remove: (num: Int, list: List[Int])List[Int]
-  var rand = new scala.util.Random                //> rand  : scala.util.Random = scala.util.Random@564425a7
+  var rand = new scala.util.Random                //> rand  : scala.util.Random = scala.util.Random@193d22b1
   for(x <- lis){
   
     if (!mmm.contains(x)){
@@ -65,8 +65,8 @@ object s {
     }
     
   }
-  mmm                                             //> res6: scala.collection.immutable.Map[Int,Int] = Map(84424 -> 94138, 63225 -
-                                                  //| > 60471, 106274 -> 84424, 127393 -> 127393, 89308 -> 63225, 60471 -> 89308,
+  mmm                                             //> res6: scala.collection.immutable.Map[Int,Int] = Map(84424 -> 63225, 63225 -
+                                                  //| > 127393, 106274 -> 84424, 127393 -> 60471, 89308 -> 89308, 60471 -> 94138,
                                                   //|  94138 -> 106274)
   
   var a1 = Array(1,2,3,4)                         //> a1  : Array[Int] = Array(1, 2, 3, 4)
@@ -92,5 +92,49 @@ object s {
                                                   //> res9: List[Double] = List(0.25, 0.48999999999999994, 0.03999999999999998)
   Math.sqrt(Array[Double](5,1,4).toList.map(e => Math.pow(e * 3 / 10 - 1, 2)).sum / 3)
                                                   //> res10: Double = 0.5099019513592785
+  var aaa = Array("data.txt", "data_1.txt", "data_4.txt", "dsa.txt", "dsa_1.txt", "tttt.txt", "wqe.txt")
+                                                  //> aaa  : Array[String] = Array(data.txt, data_1.txt, data_4.txt, dsa.txt, dsa
+                                                  //| _1.txt, tttt.txt, wqe.txt)
+  
+  aaa.groupBy(x => x.substring(0, 3))             //> res11: scala.collection.immutable.Map[String,Array[String]] = Map(ttt -> Ar
+                                                  //| ray(tttt.txt), wqe -> Array(wqe.txt), dsa -> Array(dsa.txt, dsa_1.txt), dat
+                                                  //|  -> Array(data.txt, data_1.txt, data_4.txt))
+  "da-ta-22.txt".matches(".*-[0-9]+.txt")         //> res12: Boolean = true
+  import java.util.regex.Pattern._
+  import java.util.regex.Pattern
+	var p = Pattern.compile("([^_0123456789]*)[_0123456789]*")
+                                                  //> p  : java.util.regex.Pattern = ([^_0123456789]*)[_0123456789]*
+  var m = p.matcher("email-enronD_3")             //> m  : java.util.regex.Matcher = java.util.regex.Matcher[pattern=([^_01234567
+                                                  //| 89]*)[_0123456789]* region=0,14 lastmatch=]
+  m.find()                                        //> res13: Boolean = true
+  m.group(1)                                      //> res14: String = email-enronD
+  
+  RaportMaker.pezdoit("/user/hmykhail/home/phd/reports/report040215/report040215")
+                                                  //> at least we have data [Lscala.Tuple2;@1f78e951
+                                                  //| at least we have data [Lscala.Tuple2;@4fa8b45d
+                                                  //| at least we have data [Lscala.Tuple2;@83805f9
+                                                  //| at least we have data [Lscala.Tuple2;@76d523bb
+                                                  //| at least we have data [Lscala.Tuple2;@30634e7
+                                                  //| at least we have data [Lscala.Tuple2;@49812ab7
+                                                  //| at least we have data [Lscala.Tuple2;@4750cf24
+                                                  //| at least we have data [Lscala.Tuple2;@637a9eb9
+                                                  //| at least we have data [Lscala.Tuple2;@6623a0d3
+                                                  //| at least we have data [Lscala.Tuple2;@74c314a4
+                                                  //| at least we have data [Lscala.Tuple2;@427a9f36
+                                                  //| at least we have data [Lscala.Tuple2;@7ebe9943
+                                                  //| going to right string with 318232
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   
 }

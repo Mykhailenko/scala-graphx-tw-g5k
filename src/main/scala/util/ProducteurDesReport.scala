@@ -4,20 +4,30 @@ import java.io.File
 
 import spray.json._
 import DefaultJsonProtocol._
+import scala.sys.process._
 import java.io.PrintWriter
 import java.io.FileWriter
 
 object ProducteurDesReport {
-  val metrics = Array("vertexCut", "largestPartition", "NSTDEV", "communicationCost", "replicationFactor", "balance")
+  val metrics = Array("vertexCut", "largestPartition", "NSTDEV", "communicationCost", "replicationFactor", "balance", "Partitioning.time")
 
   def main(args: Array[String]) {
-    require(args.length == 2 || args.length == 3, "Wrong argument number. Should be 2. Usage: <path_to_root> <prefix> [<confidence>]")
+    require(args.length == 2, "Wrong argument number. Should be 2. Usage: <path_to_root> <prefix> ")
 
     val root = args(0)
     val prefix = args(1)
 
+    val reportsRoot = new File(root + "/aggregated")
+    reportsRoot.mkdir()
+    val reportsRootAll = new File(reportsRoot.getAbsolutePath() + "/all")
+    val reportsRootConfidence = new File(reportsRoot.getAbsolutePath() + "/confidence")
+    reportsRootAll.mkdir()
+    reportsRootConfidence.mkdir()
+
     var data = ProducteurDesReport.getMaps(root).filter(mapa => mapa.getOrElse("graph", "").startsWith(prefix))
+
     var globalResult = ""
+    var globalResultConfidence = ""
     for (metricName <- metrics) {
       val ns = getNs(data)
 
@@ -25,30 +35,114 @@ object ProducteurDesReport {
 
       val graphs = getGraphs(data)
 
-      if (args.length == 2) {
-        var cells: Array[Array[String]] = Array
-          .fill[Array[String]](ns.length + 3)(Array.fill[String](partitioners.length * graphs.length + 1)(""))
-        cells = fillCells(cells, prefix, metricName, graphs, partitioners, ns, data)
-        globalResult = makeCSVString(cells)
-      } else if (args.length == 3) {
-        var cells: Array[Array[String]] = Array
-          .fill[Array[String]](ns.length + 3)(Array.fill[String](partitioners.length * 7 + 1)(""))
-        cells = fillCellsConfidence(cells, prefix, metricName, graphs, partitioners, ns, data)
-        globalResult = makeCSVString(cells)
+      var cells: Array[Array[String]] = Array
+        .fill[Array[String]](ns.length + 3)(Array.fill[String](partitioners.length * graphs.length + 1)(""))
+      cells = fillCells(cells, prefix, metricName, graphs, partitioners, ns, data)
+      globalResult += makeCSVString(cells)
+
+      var tout = new PrintWriter(new FileWriter(reportsRootAll.getAbsolutePath() + "/" + prefix + metricName + ".data"));
+      tout.print(makeStirng(cells, "\t", 3, "#"))
+      tout.close
+
+      for (i <- 0 until graphs.length) {
+        val g = graphs(i)
+        tout = new PrintWriter(new FileWriter(reportsRootAll.getAbsolutePath() + "/" + g + metricName + ".gnu"));
+        tout.println("set style fill transparent solid 0.85");
+        tout.println(s"""set title "different partitions/metric==$metricName/graph==$g" """)
+        tout.println("set term png");
+        tout.println(s"""set output "$g$metricName.png"""");
+        var s = s"""plot '$prefix$metricName.data' """;
+        for (p <- 0 until partitioners.length) {
+          if (p != 0) {
+            s += ", '' "
+          }
+          val column = (2 + graphs.length * p + i)
+          val partitionerName = partitioners(p)
+          s += s""" using 1:$column with lines title '$partitionerName'  """
+        }
+        tout.println(s)
+        tout.close
       }
+
+      cells = Array
+        .fill[Array[String]](ns.length + 3)(Array.fill[String](partitioners.length * 7 + 1)(""))
+      cells = fillCellsConfidence(cells, prefix, metricName, graphs, partitioners, ns, data)
+      globalResultConfidence += makeCSVString(cells)
+
+      tout = new PrintWriter(new FileWriter(reportsRootConfidence.getAbsolutePath() + "/" + prefix + metricName + ".data"));
+      tout.print(makeStirng(cells, "\t", 3, "#"))
+      tout.close
+
+      tout = new PrintWriter(new FileWriter(reportsRootConfidence.getAbsolutePath() + "/" + prefix + metricName + ".gnu"));
+      tout.println("set style fill transparent solid 0.85");
+      tout.println(s"""set title "95% confidence/metric==$metricName/graph==$prefix" """)
+      tout.println("set term png");
+      tout.println(s"""set output "$prefix$metricName.png"""");
+      var s = s"""plot '$prefix$metricName.data' """;
+
+      for (p <- 0 until partitioners.length) {
+        if (p != 0) {
+          s += ", '' "
+        }
+        val columnMinus95 = (1 + 7 * p + 3)
+        val columnPlus95 = (1 + 7 * p + 5)
+        val partitionerName = partitioners(p)
+        s += s""" using 1:$columnMinus95:$columnPlus95 with filledcurves title '$partitionerName'  """
+        createCandleChart(reportsRootConfidence.getAbsolutePath(), prefix, metricName, partitionerName, 1 + 7 * p + 4)
+      }
+      tout.println(s)
+      tout.close
+
+      //      Process("cd " + reportsRootConfidence.getAbsolutePath() + "/ ; gnuplot " + reportsRootConfidence.getAbsolutePath() + "/" + prefix + metricName + ".gnu ").run()
+
     }
+    var script = new PrintWriter(new FileWriter(reportsRootConfidence.getAbsolutePath() + "/allrun.sh"));
+    script.println("""|#!/usr/bin/bash
+       |for entry in ./*gnu
+       |do
+       | gnuplot $entry
+       |done""".stripMargin)
 
-    val out = new PrintWriter(new FileWriter(root + "/report" + prefix));
+    script.close
 
+    script = new PrintWriter(new FileWriter(reportsRootAll.getAbsolutePath() + "/allrun.sh"));
+    script.println("""|#!/usr/bin/bash
+       |for entry in ./*gnu
+       |do
+       | gnuplot $entry
+       |done""".stripMargin)
+
+    script.close
+
+    val out = new PrintWriter(new FileWriter(reportsRoot + "/report" + prefix));
     out.print(globalResult)
     out.close
+
+    val outC = new PrintWriter(new FileWriter(reportsRoot + "/report" + prefix + "Confidence"));
+    outC.print(globalResultConfidence)
+    outC.close
+  }
+
+  def createCandleChart(root: String, prefix: String, metricName: String, partitionerName: String, mean: Int): Unit = {
+    val tout = new PrintWriter(new FileWriter(root + "/" + prefix + metricName + partitionerName + ".gnu"));
+    tout.println("set style fill transparent solid 0.85");
+    tout.println(s"""set title "95% confidence/metric==$metricName/graph==$prefix/partition=$partitionerName" """)
+    tout.println("set term png");
+    tout.println(s"""set output "$prefix$metricName$partitionerName.png"""");
+    val open = mean - 1
+    val low = mean - 3
+    val high = mean + 3
+    val close = mean + 1
+
+    tout.println(s"""plot '$prefix$metricName.data' using 1:$open:$low:$high:$close with candlesticks title '$partitionerName' """);
+    tout.close
 
   }
 
   def getMaps(path: String): Array[Map[String, String]] = {
     var root = new File(path)
     var data = Array[Map[String, String]]()
-    for (graph <- root.listFiles() if graph.isDirectory()) {
+    for (graph <- root.listFiles() if graph.isDirectory() && graph.getName() != "aggregated") {
       for (partitioner <- graph.listFiles() if partitioner.isDirectory()) {
         for (json <- partitioner.listFiles() if json.isFile() && json.getName().endsWith(".json")) {
           val partitionNumber = json.getName().substring(0, json.getName().length() - ".json".length).toInt
@@ -90,8 +184,8 @@ object ProducteurDesReport {
       cells(2)(1 + j * 7 + 1) = "-90"
       cells(2)(1 + j * 7 + 2) = "-95"
       cells(2)(1 + j * 7 + 3) = "mean"
-      cells(2)(1 + j * 7 + 4) = "+90"
-      cells(2)(1 + j * 7 + 5) = "+95"
+      cells(2)(1 + j * 7 + 4) = "+95"
+      cells(2)(1 + j * 7 + 5) = "+90"
       cells(2)(1 + j * 7 + 6) = "max"
     }
 
@@ -107,10 +201,10 @@ object ProducteurDesReport {
         cells(3 + i)(1 + j * 7 + 1) = st("-90").toString
         cells(3 + i)(1 + j * 7 + 2) = st("-95").toString
         cells(3 + i)(1 + j * 7 + 3) = st("mean").toString
-        cells(3 + i)(1 + j * 7 + 4) = st("+90").toString
-        cells(3 + i)(1 + j * 7 + 5) = st("+95").toString
+        cells(3 + i)(1 + j * 7 + 4) = st("+95").toString
+        cells(3 + i)(1 + j * 7 + 5) = st("+90").toString
         cells(3 + i)(1 + j * 7 + 6) = st("max").toString
-        
+
       }
     }
     cells
@@ -172,16 +266,22 @@ object ProducteurDesReport {
   }
 
   def makeCSVString(cells: Array[Array[String]]): String = {
+    makeStirng(cells, " , ", 0, "")
+  }
+
+  def makeStirng(cells: Array[Array[String]], delimiter: String, commented: Int, signToComment: String): String = {
     var result = "";
     for (i <- 0 until cells.length) {
       for (j <- 0 until cells.head.length - 1) {
-        result += cells(i)(j) + " , ";
+        if (i < commented) {
+          result += signToComment
+        }
+        result += cells(i)(j) + delimiter;
       }
       result += cells(i)(cells.head.length - 1) + "\n"
     }
     result
   }
-
 }
 
 

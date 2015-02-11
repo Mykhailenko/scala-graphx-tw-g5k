@@ -37,6 +37,7 @@ object PartitionerTester {
 
       logPartitioning {
         graph = graph.partitionBy(PartitionStrategy.fromString(partitionerName))
+        val x = graph.edges.partitionsRDD.collect
         if (args.length == 5 && args(4) == "true") {
           var xxx = graph.edges.partitionsRDD.mapValues(b => (b.srcIds, b.dstIds).zipped map ((_, _)))
           val out = new PrintWriter(new FileWriter(new File(args(2) + ".partition")));

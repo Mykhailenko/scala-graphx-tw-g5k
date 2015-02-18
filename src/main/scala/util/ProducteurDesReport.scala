@@ -49,8 +49,8 @@ object ProducteurDesReport {
         tout = new PrintWriter(new FileWriter(reportsRootAll.getAbsolutePath() + "/" + g + metricName + ".gnu"));
         tout.println("set style fill transparent solid 0.85");
         tout.println(s"""set title "different partitions/metric==$metricName/graph==$g" """)
-        tout.println("set term png");
-        tout.println(s"""set output "$g$metricName.png"""");
+        tout.println("set term pdf");
+        tout.println(s"""set output "$g$metricName.pdf"""");
         var s = s"""plot '$prefix$metricName.data' """;
         for (p <- 0 until partitioners.length) {
           if (p != 0) {
@@ -76,8 +76,8 @@ object ProducteurDesReport {
       tout = new PrintWriter(new FileWriter(reportsRootConfidence.getAbsolutePath() + "/" + prefix + metricName + ".gnu"));
       tout.println("set style fill transparent solid 0.85");
       tout.println(s"""set title "95% confidence/metric==$metricName/graph==$prefix" """)
-      tout.println("set term png");
-      tout.println(s"""set output "$prefix$metricName.png"""");
+      tout.println("set term pdf");
+      tout.println(s"""set output "$prefix$metricName.pdf"""");
       var s = s"""plot '$prefix$metricName.data' """;
 
       for (p <- 0 until partitioners.length) {
@@ -127,8 +127,8 @@ object ProducteurDesReport {
     val tout = new PrintWriter(new FileWriter(root + "/" + prefix + metricName + partitionerName + ".gnu"));
     tout.println("set style fill transparent solid 0.85");
     tout.println(s"""set title "95% confidence/metric==$metricName/graph==$prefix/partition=$partitionerName" """)
-    tout.println("set term png");
-    tout.println(s"""set output "$prefix$metricName$partitionerName.png"""");
+    tout.println("set term pdf");
+    tout.println(s"""set output "$prefix$metricName$partitionerName.pdf"""");
     val open = mean - 1
     val low = mean - 3
     val high = mean + 3

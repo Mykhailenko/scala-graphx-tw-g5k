@@ -27,16 +27,28 @@ object PartitionerTester {
     val partitionerName = args(1)
     val minEdgePartitions = args(3).toInt
 
-    JsonLogger(sc, args(2)) { logger =>
+    
+    
+    
+    
+    
+    
+    
+    
+    JsonLogger(sc, args(2), "") { logger =>
       import logger._
 
       logGraphLoading {
         graph = GraphLoader.edgeListFile(sc, args(0), true, edgeStorageLevel = StorageLevel.MEMORY_AND_DISK,
           vertexStorageLevel = StorageLevel.MEMORY_AND_DISK, minEdgePartitions = minEdgePartitions)
+        println("!!!!!!!!!!!!!!!!\n\n\n\n\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Edges count " + graph.edges.count)
+        println("!!!!!!!!!!!!!!!!\n\n\n\n\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Vertices count " + graph.vertices.count)
       }
 
       logPartitioning {
         graph = graph.partitionBy(PartitionStrategy.fromString(partitionerName))
+        graph.edges.collect
+        graph.edges.partitionsRDD.collect
         val x = graph.edges.partitionsRDD.collect
         if (args.length == 5 && args(4) == "true") {
           var xxx = graph.edges.partitionsRDD.mapValues(b => (b.srcIds, b.dstIds).zipped map ((_, _)))

@@ -19,21 +19,16 @@ object PartitionerTester {
 
     require(args.length >= 4, "Wrong argument number. Should be 4. Usage: <path_to_grpah> <partiotioner_name> <filename_with_result> <minEdgePartitions> [true/false for save partitions]")
 
-    val sc = new SparkContext(new SparkConf()
-      .setSparkHome(System.getenv("SPARK_HOME"))
-      .setJars(SparkContext.jarOfClass(this.getClass).toList))
 
     var graph: Graph[Int, Int] = null
     val partitionerName = args(1)
     val minEdgePartitions = args(3).toInt
+    val nameOfGraph = args(0).substring(args(0).lastIndexOf("/") + 1)
 
-    
-    
-    
-    
-    
-    
-    
+    val sc = new SparkContext(new SparkConf()
+    .setSparkHome(System.getenv("SPARK_HOME"))
+    .setAppName(s" partitioning | $nameOfGraph | $partitionerName | $minEdgePartitions parts")
+    .setJars(SparkContext.jarOfClass(this.getClass).toList))
     
     JsonLogger(sc, args(2), "") { logger =>
       import logger._
@@ -41,8 +36,6 @@ object PartitionerTester {
       logGraphLoading {
         graph = GraphLoader.edgeListFile(sc, args(0), true, edgeStorageLevel = StorageLevel.MEMORY_AND_DISK,
           vertexStorageLevel = StorageLevel.MEMORY_AND_DISK, minEdgePartitions = minEdgePartitions)
-        println("!!!!!!!!!!!!!!!!\n\n\n\n\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Edges count " + graph.edges.count)
-        println("!!!!!!!!!!!!!!!!\n\n\n\n\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Vertices count " + graph.vertices.count)
       }
 
       logPartitioning {

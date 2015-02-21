@@ -9,7 +9,7 @@ import java.io.PrintWriter
 import java.io.FileWriter
 
 object ProducteurDesReport {
-  val metrics = Array("vertexCut", "largestPartition", "NSTDEV", "communicationCost", "replicationFactor", "balance", "Partitioning.time")
+  val metrics = Array("vertexCut", "largestPartition", "NSTDEV", "communicationCost", "replicationFactor", "balance", "Partitioning.time", "AlgorithExecution.time")
 
   def main(args: Array[String]) {
     require(args.length == 2, "Wrong argument number. Should be 2. Usage: <path_to_root> <prefix> ")
@@ -17,7 +17,7 @@ object ProducteurDesReport {
     val root = args(0)
     val prefix = args(1)
 
-    val reportsRoot = new File(root + "/aggregated")
+    val reportsRoot = new File(s"$root/aggregated")
     reportsRoot.mkdir()
     val reportsRootAll = new File(reportsRoot.getAbsolutePath() + "/all")
     val reportsRootConfidence = new File(reportsRoot.getAbsolutePath() + "/confidence")
@@ -32,7 +32,8 @@ object ProducteurDesReport {
       val ns = getNs(data)
 
       val partitioners = getPartitioners(data)
-
+      assert(partitioners.length > 0)
+      
       val graphs = getGraphs(data)
 
       var cells: Array[Array[String]] = Array
@@ -46,22 +47,21 @@ object ProducteurDesReport {
 
       for (i <- 0 until graphs.length) {
         val g = graphs(i)
-        tout = new PrintWriter(new FileWriter(reportsRootAll.getAbsolutePath() + "/" + g + metricName + ".gnu"));
-        tout.println("set style fill transparent solid 0.85");
-        tout.println(s"""set title "different partitions/metric==$metricName/graph==$g" """)
-        tout.println("set term pdf");
-        tout.println(s"""set output "$g$metricName.pdf"""");
-        var s = s"""plot '$prefix$metricName.data' """;
+
+        var ss = "set style fill transparent solid 0.85\n";
+        ss += s"""set title "different partitions/metric==$metricName/graph==$g"\n"""
+        ss += "set term pdf\n";
+        ss += s"""set output "$g$metricName.pdf"\n"""
+        ss += s"""plot '$prefix$metricName.data' """;
         for (p <- 0 until partitioners.length) {
           if (p != 0) {
-            s += ", '' "
+            ss += ", '' "
           }
           val column = (2 + graphs.length * p + i)
           val partitionerName = partitioners(p)
-          s += s""" using 1:$column with lines title '$partitionerName'  """
+          ss += s""" using 1:$column with lines title '$partitionerName'  """
         }
-        tout.println(s)
-        tout.close
+        writeStringToFile(ss, reportsRootAll.getAbsolutePath() + "/" + g + metricName + ".gnu")
       }
 
       cells = Array
@@ -69,58 +69,51 @@ object ProducteurDesReport {
       cells = fillCellsConfidence(cells, prefix, metricName, graphs, partitioners, ns, data)
       globalResultConfidence += makeCSVString(cells)
 
-      tout = new PrintWriter(new FileWriter(reportsRootConfidence.getAbsolutePath() + "/" + prefix + metricName + ".data"));
-      tout.print(makeStirng(cells, "\t", 3, "#"))
-      tout.close
+      writeStringToFile(makeStirng(cells, "\t", 3, "#"), reportsRootConfidence.getAbsolutePath() + "/" + prefix + metricName + ".data")
 
-      tout = new PrintWriter(new FileWriter(reportsRootConfidence.getAbsolutePath() + "/" + prefix + metricName + ".gnu"));
-      tout.println("set style fill transparent solid 0.85");
-      tout.println(s"""set title "95% confidence/metric==$metricName/graph==$prefix" """)
-      tout.println("set term pdf");
-      tout.println(s"""set output "$prefix$metricName.pdf"""");
-      var s = s"""plot '$prefix$metricName.data' """;
+      var ss = "set style fill transparent solid 0.85\n"
+      ss += s"""set title "95% confidence/metric==$metricName/graph==$prefix"\n"""
+      ss += "set term pdf\n"
+      ss += s"""set output "$prefix$metricName.pdf"\n"""
+      ss += s"""plot '$prefix$metricName.data' """;
 
       for (p <- 0 until partitioners.length) {
         if (p != 0) {
-          s += ", '' "
+          ss += ", '' "
         }
         val columnMinus95 = (1 + 7 * p + 3)
         val columnPlus95 = (1 + 7 * p + 5)
         val partitionerName = partitioners(p)
-        s += s""" using 1:$columnMinus95:$columnPlus95 with filledcurves title '$partitionerName'  """
+        ss += s""" using 1:$columnMinus95:$columnPlus95 with filledcurves title '$partitionerName'  """
         createCandleChart(reportsRootConfidence.getAbsolutePath(), prefix, metricName, partitionerName, 1 + 7 * p + 4)
       }
-      tout.println(s)
-      tout.close
+      writeStringToFile(ss, reportsRootConfidence.getAbsolutePath() + "/" + prefix + metricName + ".gnu")
 
       //      Process("cd " + reportsRootConfidence.getAbsolutePath() + "/ ; gnuplot " + reportsRootConfidence.getAbsolutePath() + "/" + prefix + metricName + ".gnu ").run()
 
     }
-    var script = new PrintWriter(new FileWriter(reportsRootConfidence.getAbsolutePath() + "/allrun.sh"));
-    script.println("""|#!/usr/bin/bash
-       |for entry in ./*gnu
-       |do
-       | gnuplot $entry
-       |done""".stripMargin)
-
-    script.close
-
-    script = new PrintWriter(new FileWriter(reportsRootAll.getAbsolutePath() + "/allrun.sh"));
-    script.println("""|#!/usr/bin/bash
-       |for entry in ./*gnu
-       |do
-       | gnuplot $entry
-       |done""".stripMargin)
-
-    script.close
-
-    val out = new PrintWriter(new FileWriter(reportsRoot + "/report" + prefix));
-    out.print(globalResult)
+    
+    addAllRunScriptToFolder(reportsRootConfidence.getAbsolutePath())
+    addAllRunScriptToFolder(reportsRootAll.getAbsolutePath())
+    
+    writeStringToFile(globalResult, reportsRoot + "/report" + prefix)
+    writeStringToFile(globalResultConfidence, reportsRoot + "/report" + prefix + "Confidence")
+  }
+  
+  def writeStringToFile(content : String, filename : String) : Unit = {
+    val out = new PrintWriter(new FileWriter(filename));
+    out.print(content)
     out.close
-
-    val outC = new PrintWriter(new FileWriter(reportsRoot + "/report" + prefix + "Confidence"));
-    outC.print(globalResultConfidence)
-    outC.close
+  }
+  
+  def addAllRunScriptToFolder(path: String): Unit = {
+    val script = new PrintWriter(new FileWriter(path + "/allrun.sh"));
+    script.println("""|#!/usr/bin/bash
+                      |for entry in ./*gnu
+                      |do
+                      | gnuplot $entry
+                      |done""".stripMargin)
+    script.close
   }
 
   def createCandleChart(root: String, prefix: String, metricName: String, partitionerName: String, mean: Int): Unit = {

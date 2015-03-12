@@ -60,7 +60,14 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
   }
 
   def calculcateAverageDegree(graph: Graph[Int, Int]): Array[(Int, Int)] = {
-    graph.degrees.collect.groupBy(_._2).map(a => (a._1, a._2.length)).toArray.sortWith(_._1 < _._1)
+    val result = graph.degrees.collect.groupBy(_._2).map(a => (a._1, a._2.length)).toArray.sortWith(_._1 < _._1)
+    assert(result.map(x => x._2).reduce(_ + _) == numberOfVerices(graph))
+    result
+  }
+  
+  def numberOfVerticesCanBeCut(graph: Graph[Int, Int]): Long = {
+    val degree2count = calculcateAverageDegree(graph)
+    degree2count.filter(x => x._1 > 1).map(x => x._2).reduce(_ + _)
   }
 
   def calculateSetOfVerticesNotCatted(graph: Graph[Int, Int]): Set[VertexId] = {
@@ -156,6 +163,7 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
     log("numberPartitions", partitioningNumber(graph).toString)
     log("edgeInPartitiones", numberOfEdgesInEachPartition(graph).toList.mkString(", "))
     log("NSTDEV", NSTDEV(graph).toString)
+    log("numberVerticesCanBeCut", numberOfVerticesCanBeCut(graph).toString)
 //    saveCSV(graph)
   }
 

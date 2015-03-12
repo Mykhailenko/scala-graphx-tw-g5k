@@ -12,7 +12,9 @@ object ProducteurDesReport {
   val metrics = Array("vertexCut", "largestPartition", "NSTDEV", "communicationCost", "replicationFactor", "balance", "Partitioning.time", "AlgorithExecution.time")
 
   def main(args: Array[String]) {
-    require(args.length == 2, "Wrong argument number. Should be 2. Usage: <path_to_root> <prefix> ")
+    require(args.length >= 2, "Wrong argument number. Should be 2. Usage: <path_to_root> <prefix> [newopt]")
+
+    val newopt = args.length != 2
 
     val root = args(0)
     val prefix = args(1)
@@ -33,7 +35,7 @@ object ProducteurDesReport {
 
       val partitioners = getPartitioners(data)
       assert(partitioners.length > 0)
-      
+
       val graphs = getGraphs(data)
 
       var cells: Array[Array[String]] = Array
@@ -48,18 +50,40 @@ object ProducteurDesReport {
       for (i <- 0 until graphs.length) {
         val g = graphs(i)
 
+        val nubmerOfVerticesToBeCut = if (newopt)
+          data.filter(mapa => mapa.getOrElse("graph", "") == g)(0).getOrElse("numberVerticesCanBeCut", "").toInt
+        else 0
+
         var ss = "set style fill transparent solid 0.85\n";
-        ss += s"""set title "different partitions/metric==$metricName/graph==$g"\n"""
+        if (metricName == "largestPartition") {
+          ss += "set logscale y\n"
+        }
+        if (metricName == "vertexCut" && newopt) {
+          ss += """set format y "%g %%"\n"""
+        }
+        //        ss += s"""set title "different partitions/metric==$metricName/graph==$g"\n"""
         ss += "set term pdf\n";
+        ss += s"""set xlabel "Partition number"\n"""
         ss += s"""set output "$g$metricName.pdf"\n"""
         ss += s"""plot '$prefix$metricName.data' """;
         for (p <- 0 until partitioners.length) {
           if (p != 0) {
             ss += ", '' "
           }
-          val column = (2 + graphs.length * p + i)
+          val original = (2 + graphs.length * p + i)
+
+          val column =
+            if (metricName == "vertexCut" && newopt) {
+              // from 14 to ($14/187)
+              "($" + original + "/" + (nubmerOfVerticesToBeCut / 100) + ")"
+            } else {
+              original
+            }
+
           val partitionerName = partitioners(p)
-          ss += s""" using 1:$column with lines title '$partitionerName'  """
+          val interval = 2 + p % 5
+
+          ss += s""" using 1:$column with linespoints lc $p lt -1 pi +$interval pt $p ps 0.3 title '$partitionerName'  """
         }
         writeStringToFile(ss, reportsRootAll.getAbsolutePath() + "/" + g + metricName + ".gnu")
       }
@@ -92,20 +116,20 @@ object ProducteurDesReport {
       //      Process("cd " + reportsRootConfidence.getAbsolutePath() + "/ ; gnuplot " + reportsRootConfidence.getAbsolutePath() + "/" + prefix + metricName + ".gnu ").run()
 
     }
-    
+
     addAllRunScriptToFolder(reportsRootConfidence.getAbsolutePath())
     addAllRunScriptToFolder(reportsRootAll.getAbsolutePath())
-    
+
     writeStringToFile(globalResult, reportsRoot + "/report" + prefix)
     writeStringToFile(globalResultConfidence, reportsRoot + "/report" + prefix + "Confidence")
   }
-  
-  def writeStringToFile(content : String, filename : String) : Unit = {
+
+  def writeStringToFile(content: String, filename: String): Unit = {
     val out = new PrintWriter(new FileWriter(filename));
     out.print(content)
     out.close
   }
-  
+
   def addAllRunScriptToFolder(path: String): Unit = {
     val script = new PrintWriter(new FileWriter(path + "/allrun.sh"));
     script.println("""|#!/usr/bin/bash
@@ -134,6 +158,8 @@ object ProducteurDesReport {
 
   def getMaps(path: String): Array[Map[String, String]] = {
     var root = new File(path)
+    println(path)
+    println(root.isDirectory())
     var data = Array[Map[String, String]]()
     for (graph <- root.listFiles() if graph.isDirectory() && graph.getName() != "aggregated") {
       for (partitioner <- graph.listFiles() if partitioner.isDirectory()) {

@@ -31,6 +31,7 @@ object FourDiameterHeuristic {
     var diameter: Int = 0;
     
     
+    
     JsonLogger(sc) { logger =>
       import logger._
 

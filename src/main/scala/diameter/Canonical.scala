@@ -38,6 +38,27 @@ object Canonical {
 
     val neigbours = graph.collectNeighborIds(EdgeDirection.Out)
 
+    val cc = graph.edges.partitionsRDD.collect
+    for(ziga <- cc){
+      println("partition id " + ziga._1)
+      val ep = ziga._2
+      for(i <- 0 until ep.srcIds.length){
+        println("ep.srcIds(i) = " + ep.srcIds(i) + "; attr = " + ep.data(i) +"; ep.dstIds(i) = " + ep.dstIds(i))
+      }
+      println("then VertexЕPartition")
+      
+      for(v <- ep.vertices.values){
+        println("v = " + v)
+      }
+        
+    }
+    println("wasted day")
+//    val rr = cc.mapPartitions({ iter =>
+//      
+//      Iterator(iter)
+//    } 
+//    , preservesPartitioning = true)
+
     println("start of repartition:")
     pringEdges(initEdges)
     //    for (v <- graph.vertices.collect) {
@@ -51,6 +72,8 @@ object Canonical {
     //      }
     //    }
 
+    
+    
     for (v <- graph.vertices.collect) {
       //      println("v = " + v._1)
       //      for (e <- getEdges(v._1)) {

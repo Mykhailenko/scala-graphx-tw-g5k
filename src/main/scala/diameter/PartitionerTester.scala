@@ -32,7 +32,7 @@ object PartitionerTester {
     val sc = new SparkContext(new SparkConf()
     .setSparkHome(System.getenv("SPARK_HOME"))
     .set("spark.cores.max", numberOfCores)
-    .setAppName(s" partitioning | $nameOfGraph | $partitionerName | $minEdgePartitions parts | $numberOfCores cores")
+    //.setAppName(s" partitioning | $nameOfGraph | $partitionerName | $minEdgePartitions parts | $numberOfCores cores")
     .setJars(SparkContext.jarOfClass(this.getClass).toList))
     
     JsonLogger(sc, args(2), "") { logger =>
@@ -45,28 +45,27 @@ object PartitionerTester {
 
       logPartitioning {
         graph = graph.partitionBy(PartitionStrategy.fromString(partitionerName))
-        graph.edges.collect
-        graph.edges.partitionsRDD.collect
-        val x = graph.edges.partitionsRDD.collect
-        if (args(4) == "true") {
-          var xxx = graph.edges.partitionsRDD.mapValues(b => (b.srcIds, b.dstIds).zipped map ((_, _)))
-          val out = new PrintWriter(new FileWriter(new File(args(2) + ".partition")));
-          out.println("There are " + xxx.count + " partitions");
-          for ((id, edges) <- xxx.collect) {
-            out.println("Partition id " + id.toLong)
-            for ((src, dst) <- edges) {
-              out.println(src + " --> " + dst)
-            }
-          }
-          out.flush();
-          out.close()
-        }
+        graph.edges.count
+//        val x = graph.edges.partitionsRDD.collect
+//        if (args(4) == "true") {
+//          var xxx = graph.edges.partitionsRDD.mapValues(b => (b.srcIds, b.dstIds).zipped map ((_, _)))
+//          val out = new PrintWriter(new FileWriter(new File(args(2) + ".partition")));
+//          out.println("There are " + xxx.count + " partitions");
+//          for ((id, edges) <- xxx.collect) {
+//            out.println("Partition id " + id.toLong)
+//            for ((src, dst) <- edges) {
+//              out.println(src + " --> " + dst)
+//            }
+//          }
+//          out.flush();
+//          out.close()
+//        }
       }
       logCalculationAfterPartitioning(graph)
 
       logAlgorithExecution {
       }
-      val inDegrees: VertexRDD[Int] = graph.inDegrees
+//      val inDegrees: VertexRDD[Int] = graph.inDegrees
 
       logResultSaving {
 

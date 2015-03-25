@@ -18,7 +18,7 @@ object PartitionAndConnectedCommunity {
   def main(args: Array[String]) {
 
     require(args.length == 5, """|Wrong argument number.
-                                 |Should be 4. Usage: <pathToGrpah> <partiotionerName> 
+                                 |Should be 5. Usage: <pathToGrpah> <partiotionerName> 
                                  |<filenameWithResult> <minEdgePartitions> <numberOfCores>""".stripMargin)
 
     val pathToGrpah = args(0)
@@ -28,7 +28,7 @@ object PartitionAndConnectedCommunity {
     val numberOfCores = args(4)
 
     val nameOfGraph = pathToGrpah.substring(pathToGrpah.lastIndexOf("/") + 1)
-    
+
     val sc = new SparkContext(new SparkConf()
       .setSparkHome(System.getenv("SPARK_HOME"))
       .setAppName(s" part + conCom | $nameOfGraph | $partitionerName | $minEdgePartitions parts | $numberOfCores cores")
@@ -36,7 +36,7 @@ object PartitionAndConnectedCommunity {
       .setJars(SparkContext.jarOfClass(this.getClass).toList))
 
     var graph: Graph[Int, Int] = null
-    var conCom: Array[(VertexId, VertexId)] = null
+    var conCom: VertexRDD[VertexId] = null
 
     JsonLogger(sc, filenameWithResult, "") { logger =>
       import logger._
@@ -49,21 +49,14 @@ object PartitionAndConnectedCommunity {
       logPartitioning {
         graph = graph.partitionBy(PartitionStrategy.fromString(partitionerName))
         // just to make sure that partition really did
-        graph.edges.collect
-        graph.edges.partitionsRDD.collect
+        graph.edges.count
       }
       logCalculationAfterPartitioning(graph)
       logAlgorithExecution {
-        conCom = graph.connectedComponents.vertices.collect
+        conCom = graph.connectedComponents.vertices
       }
       logResultSaving {
-        val out = new PrintWriter(new FileWriter(new File(filenameWithResult + ".concom")));
-
-        for ((id, componentId) <- conCom) {
-          out println s"$id $componentId"
-        }
-        out close
-
+        conCom.saveAsTextFile(filenameWithResult + ".concom")
       }
 
     }

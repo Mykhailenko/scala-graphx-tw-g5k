@@ -13,31 +13,24 @@ import java.io.FileWriter
 import org.apache.spark.storage.StorageLevel
 import java.util.Random
 
-object PartitionAndConnectedCommunity {
+object NoIdea {
 
   def main(args: Array[String]) {
 
-    require(args.length == 5, """|Wrong argument number.
-                                 |Should be 5. Usage: <pathToGrpah> <partiotionerName> 
-                                 |<filenameWithResult> <minEdgePartitions> <numberOfCores>""".stripMargin)
+    require(args.length == 3, """|Wrong argument number.
+                                 |Should be 3. Usage: <pathToGrpah> <filenameWithResult> <minEdgePartitions> """.stripMargin)
 
     val pathToGrpah = args(0)
-    val partitionerName = args(1)
-    val filenameWithResult = args(2)
-    val minEdgePartitions = args(3).toInt
-    val numberOfCores = args(4)
+    val filenameWithResult = args(1)
+    val minEdgePartitions = args(2).toInt
 
     val nameOfGraph = pathToGrpah.substring(pathToGrpah.lastIndexOf("/") + 1)
 
     val sc = new SparkContext(new SparkConf()
       .setSparkHome(System.getenv("SPARK_HOME"))
-      .setAppName(s" PartitionAndConnectedCommunity $nameOfGraph $partitionerName $numberOfCores cores")
-      .set("spark.cores.max", numberOfCores)
-      .set("spark.executor.id", "ramambahararambaru")
       .setJars(SparkContext.jarOfClass(this.getClass).toList))
 
     var graph: Graph[Int, Int] = null
-    var conCom: VertexRDD[VertexId] = null
 
     JsonLogger(sc, filenameWithResult, "") { logger =>
       import logger._
@@ -48,19 +41,22 @@ object PartitionAndConnectedCommunity {
       }
 
       logPartitioning {
-        graph = graph.partitionBy(PartitionStrategy.fromString(partitionerName))
+        graph = graph.partitionBy(PartitionStrategy.RandomVertexCut)
         // just to make sure that partition really did
-        graph.edges.count
+        graph.edges.partitionsRDD.collect
       }
       logCalculationAfterPartitioning(graph)
-      logAlgorithExecution {
-        conCom = graph.connectedComponents.vertices
-        conCom.count
-      }
-      logResultSaving{
-        conCom.coalesce(1, true).saveAsTextFile(args(2) + ".conCom")
-      }
 
+      logAlgorithExecution {
+        graph = graph.mapVertices((id, value) => 0)
+        graph = graph.mapEdges(edge => 1)
+        val olderFollowers: VertexRDD[Int] = graph.mapReduceTriplets[Int](
+          triplet => Iterator((triplet.dstId, triplet.attr)),
+          (a, b) => a + b // Reduce Function
+          )
+        println("id, attribudte")
+        olderFollowers.collect.foreach(a => println(a._1 + " " + a._2))  
+      }
     }
   }
 }

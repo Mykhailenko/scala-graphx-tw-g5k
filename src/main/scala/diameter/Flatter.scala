@@ -13,7 +13,7 @@ import scala.util.Random
 object Flatter {
   def main(args: Array[String]) {
 
-    require(args.length >= 3, "Usage: <graph> <flatGraph> <numPartition> [how many edges use in percentage from 0.0 till 1.0]")
+    require(args.length >= 2, "Usage: <graph> <flatGraph> [how many edges use in percentage from 0.0 till 1.0]")
 
     val conf = new SparkConf()
       .setAppName("Flat")
@@ -27,18 +27,23 @@ object Flatter {
 
       logGraphLoading {
 
-        if (args.length == 4) {
-          val percentage: Double = args(3).toDouble
+        if (args.length == 3) {
+          val percentage: Double = args(2).toDouble
           relationships = sc.textFile(args(0)).flatMap(line => {
             val fields = line.split(" ")
-            val edges = fields.tail.tail.map(folowerId => folowerId.toLong + " " + fields.head.toLong)
-            edges.filter(x => math.random < percentage)
+            val edges = fields.tail.tail.map(folowerId => folowerId + " " + fields.head)
+            
+            edges.filter(x => x.split("\\s+").length == 2)
+                 .filter(x => math.random < percentage)
           })
-        } else {
+        } else if (args.length == 2)  {
           relationships = sc.textFile(args(0)).flatMap(line => {
             val fields = line.split(" ")
             fields.tail.tail.map(folowerId => folowerId.toLong + " " + fields.head.toLong)
           })
+        } else {
+          println("NUmber of parameters should be 2 or 3")
+          System.exit(1)
         }
 
       }

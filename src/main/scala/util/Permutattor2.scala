@@ -7,7 +7,7 @@ import java.io.FileWriter
 
 object Permutattor2 {
   def main(args: Array[String]) {
-    require(args.length == 2, "Wrong argument number. Should be 1. Usage: <path_to_grpah> <path_to_permutatted>")
+    require(args.length == 2, "Wrong argument number. Should be 2. Usage: <path_to_grpah> <path_to_permutatted>")
 
     var mapa = Map[Int, Int]()
     var rand = new scala.util.Random

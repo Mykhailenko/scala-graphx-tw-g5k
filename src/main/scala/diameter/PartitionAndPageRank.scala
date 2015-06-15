@@ -13,7 +13,7 @@ import java.io.FileWriter
 import org.apache.spark.storage.StorageLevel
 import java.util.Random
 
-object PartitionAndConnectedCommunity {
+object PartitionAndPageRank {
 
   def main(args: Array[String]) {
 
@@ -27,18 +27,19 @@ object PartitionAndConnectedCommunity {
     val minEdgePartitions = args(3).toInt
     val numberOfCores = args(4)
 
+    assert(new File(pathToGrpah).isFile(), "it is not a graph: " + pathToGrpah)
+    
     val nameOfGraph = pathToGrpah.substring(pathToGrpah.lastIndexOf("/") + 1)
 
     val sc = new SparkContext(new SparkConf()
       .setSparkHome(System.getenv("SPARK_HOME"))
-      .setAppName(s" PartitionAndConnectedCommunity $nameOfGraph $partitionerName $numberOfCores cores")
+      .setAppName(s" PartitionAndPageRank $nameOfGraph $partitionerName $numberOfCores cores")
+//      .setAppName(" part + conCom  EdgePartition1D 50 cores")
       .set("spark.cores.max", numberOfCores)
-      .set("spark.executor.id", "ramambahararambaru")
       .setJars(SparkContext.jarOfClass(this.getClass).toList))
 
     var graph: Graph[Int, Int] = null
-    var conCom: VertexRDD[VertexId] = null
-
+    val r: Graph[Double,Double] = null
     JsonLogger(sc, filenameWithResult, "") { logger =>
       import logger._
 
@@ -54,12 +55,13 @@ object PartitionAndConnectedCommunity {
       }
       logCalculationAfterPartitioning(graph)
       logAlgorithExecution {
-        conCom = graph.connectedComponents.vertices
-        conCom.count
+        val r = graph.pageRank(0.1, 0.15)
+        r.vertices.count
       }
       logResultSaving{
-        conCom.coalesce(1, true).saveAsTextFile(args(2) + ".conCom")
+        r.vertices.coalesce(1, true).saveAsTextFile(args(2) + ".conCom")
       }
+      
 
     }
   }

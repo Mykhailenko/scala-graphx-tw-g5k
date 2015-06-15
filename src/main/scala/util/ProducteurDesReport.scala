@@ -1,7 +1,6 @@
 package util
 
 import java.io.File
-
 import spray.json._
 import DefaultJsonProtocol._
 import scala.sys.process._
@@ -9,8 +8,8 @@ import java.io.PrintWriter
 import java.io.FileWriter
 
 object ProducteurDesReport {
-  val metrics = Array("vertexCut", "largestPartition", "NSTDEV", "communicationCost", "replicationFactor", "balance", "Partitioning.time", "AlgorithExecution.time")
-
+  //val metrics = Array("vertexCut", "largestPartition", "NSTDEV", "communicationCost", "replicationFactor", "balance", "Partitioning.time", "AlgorithExecution.time")
+  val metrics = Array("partAndExec", "vertexCut", "NSTDEV", "replicationFactor", "balance", "Partitioning.time", "AlgorithExecution.time") /// "networkshuffle"
   def main(args: Array[String]) {
     require(args.length >= 2, "Wrong argument number. Should be 2. Usage: <path_to_root> <prefix> [newopt]")
 
@@ -26,7 +25,11 @@ object ProducteurDesReport {
     reportsRootAll.mkdir()
     reportsRootConfidence.mkdir()
 
-    var data = ProducteurDesReport.getMaps(root).filter(mapa => mapa.getOrElse("graph", "").startsWith(prefix))
+    val rootDir = new File(root)
+
+    require(rootDir.isDirectory(), s"It seems path: $root does not point to a directory")
+
+    var data = ProducteurDesReport.getMaps(rootDir).filter(mapa => mapa.getOrElse("graph", "").startsWith(prefix))
 
     var globalResult = ""
     var globalResultConfidence = ""
@@ -59,7 +62,7 @@ object ProducteurDesReport {
           ss += "set logscale y\n"
         }
         if (metricName == "vertexCut" && newopt) {
-          ss += """set format y "%g %%"\n"""
+          ss += """set format y "%g %%"""" + "\n"
         }
         //        ss += s"""set title "different partitions/metric==$metricName/graph==$g"\n"""
         ss += "set term pdf\n";
@@ -83,7 +86,7 @@ object ProducteurDesReport {
           val partitionerName = partitioners(p)
           val interval = 2 + p % 5
 
-          ss += s""" using 1:$column with linespoints lc $p lt -1 pi +$interval pt $p ps 0.3 title '$partitionerName'  """
+          ss += s""" using 1:$column with linespoints lw 3 lc $p lt -1 pi +$interval pt $p ps 0.3 title '$partitionerName'  """
         }
         writeStringToFile(ss, reportsRootAll.getAbsolutePath() + "/" + g + metricName + ".gnu")
       }
@@ -96,21 +99,65 @@ object ProducteurDesReport {
       writeStringToFile(makeStirng(cells, "\t", 3, "#"), reportsRootConfidence.getAbsolutePath() + "/" + prefix + metricName + ".data")
 
       var ss = "set style fill transparent solid 0.85\n"
-      ss += s"""set title "95% confidence/metric==$metricName/graph==$prefix"\n"""
+      var avg = "set style fill transparent solid 0.85\n"
+      //      ss += s"""set title "95% confidence/metric==$metricName/graph==$prefix"\n"""
       ss += "set term pdf\n"
+      avg += "set term pdf\n"
+
+      ss += "set xlabel \"Partition number\"\n"
+      avg += "set xlabel \"Partition number\"\n"
+
+      if (metricName == "Partitioning.time" ||
+        metricName == "AlgorithExecution.time" ||
+        metricName == "partAndExec") {
+        ss += "set ylabel \"Time (seconds)\"\n"
+        avg += "set ylabel \"Time (seconds)\"\n"
+      } else if (metricName == "balance") {
+        ss += "set ylabel \"Balance coefficient\"\n"
+        avg += "set ylabel \"Balance coefficient\"\n"
+      } else if (metricName == "vertexCut") {
+        ss += "set ylabel \"Vertices cut\"\n"
+        avg += "set ylabel \"Vertices cut\"\n"
+      } else if (metricName == "replicationFactor") {
+        ss += "set ylabel \"Replication factor coefficient\"\n"
+        avg += "set ylabel \"Replication factor coefficient\"\n"
+      }
+
       ss += s"""set output "$prefix$metricName.pdf"\n"""
+      avg += s"""set output "$prefix$metricName.average.pdf"\n"""
+
       ss += s"""plot '$prefix$metricName.data' """;
+      avg += s"""plot '$prefix$metricName.data' """;
 
       for (p <- 0 until partitioners.length) {
         if (p != 0) {
           ss += ", '' "
+          avg += ", '' "
         }
         val columnMinus95 = (1 + 7 * p + 3)
         val columnPlus95 = (1 + 7 * p + 5)
+
+        val mean = 1 + 7 * p + 4
+        val open = mean - 1
+        val low = mean - 3
+        val high = mean + 3
+        val close = mean + 1
+
         val partitionerName = partitioners(p)
-        ss += s""" using 1:$columnMinus95:$columnPlus95 with filledcurves title '$partitionerName'  """
+        val interval = 2 + p % 5
+        //        ss += s""" using 1:$columnMinus95:$columnPlus95 with filledcurves title '$partitionerName'  """
+        ss += s""" using 1:$open:$low:$high:$close with candlesticks title '$partitionerName'  """
+        if (metricName == "Partitioning.time" ||
+          metricName == "AlgorithExecution.time" ||
+          metricName == "partAndExec") {
+          val dollar = "$"
+          avg += s""" using 1:$mean with linespoint lw 3 lc $p lt -1 pi +$interval pt $p ps 0.3  title '$partitionerName'  """
+        } else {
+          avg += s""" using 1:$mean with linespoint lw 3 lc $p lt -1 pi +$interval pt $p ps 0.3  title '$partitionerName'  """
+        }
         createCandleChart(reportsRootConfidence.getAbsolutePath(), prefix, metricName, partitionerName, 1 + 7 * p + 4)
       }
+      writeStringToFile(avg, reportsRootConfidence.getAbsolutePath() + "/" + prefix + metricName + "Average.gnu")
       writeStringToFile(ss, reportsRootConfidence.getAbsolutePath() + "/" + prefix + metricName + ".gnu")
 
       //      Process("cd " + reportsRootConfidence.getAbsolutePath() + "/ ; gnuplot " + reportsRootConfidence.getAbsolutePath() + "/" + prefix + metricName + ".gnu ").run()
@@ -156,10 +203,7 @@ object ProducteurDesReport {
 
   }
 
-  def getMaps(path: String): Array[Map[String, String]] = {
-    var root = new File(path)
-    println(path)
-    println(root.isDirectory())
+  def getMaps(root: File): Array[Map[String, String]] = {
     var data = Array[Map[String, String]]()
     for (graph <- root.listFiles() if graph.isDirectory() && graph.getName() != "aggregated") {
       for (partitioner <- graph.listFiles() if partitioner.isDirectory()) {
@@ -167,9 +211,16 @@ object ProducteurDesReport {
           val partitionNumber = json.getName().substring(0, json.getName().length() - ".json".length).toInt
 
           var mapa = scala.io.Source.fromFile(json.getAbsolutePath()).mkString.parseJson.convertTo[Map[String, String]]
+          if(new File(json.getAbsolutePath() + "c").isFile()){
+        	var inout = scala.io.Source.fromFile(json.getAbsolutePath()).mkString.parseJson.convertTo[Map[String, String]]
+        	val sum = inout.getOrElse("input", "0").toInt + inout.getOrElse("output", "0").toInt
+        	mapa += ("networkshuffle" -> sum.toString)
+          }
           mapa += ("graph" -> graph.getName())
           mapa += ("partitionerName" -> partitioner.getName())
           mapa += ("N" -> partitionNumber.toString)
+          val x = mapa.get("Partitioning.time").get.toInt + mapa.get("AlgorithExecution.time").get.toInt
+          mapa += ("partAndExec" -> x.toString)
           data = data :+ mapa
         }
       }
@@ -215,15 +266,27 @@ object ProducteurDesReport {
         var d = data.filter(mapa => {
           (mapa.getOrElse("partitionerName", "") == partitioners(j)) && (mapa.getOrElse("N", "").toInt == ns(i))
         }).map(mapa => mapa.getOrElse(metricName, "").toDouble).toArray
-        val st = stat(d)
-        cells(3 + i)(1 + j * 7 + 0) = st("min").toString
-        cells(3 + i)(1 + j * 7 + 1) = st("-90").toString
-        cells(3 + i)(1 + j * 7 + 2) = st("-95").toString
-        cells(3 + i)(1 + j * 7 + 3) = st("mean").toString
-        cells(3 + i)(1 + j * 7 + 4) = st("+95").toString
-        cells(3 + i)(1 + j * 7 + 5) = st("+90").toString
-        cells(3 + i)(1 + j * 7 + 6) = st("max").toString
-
+        
+        if (metricName == "Partitioning.time" ||
+              metricName == "AlgorithExecution.time" ||
+              metricName == "partAndExec") {
+          d = d.map(x => x / 1000)
+        }
+        
+        if (d.isEmpty) {
+          for (q <- 0 to 6) {
+            cells(3 + i)(1 + j * 7 + q) = "?"
+          }
+        } else {
+          val st = stat(d)
+          cells(3 + i)(1 + j * 7 + 0) = st("min").toString
+          cells(3 + i)(1 + j * 7 + 1) = st("-90").toString
+          cells(3 + i)(1 + j * 7 + 2) = st("-95").toString
+          cells(3 + i)(1 + j * 7 + 3) = st("mean").toString
+          cells(3 + i)(1 + j * 7 + 4) = st("+95").toString
+          cells(3 + i)(1 + j * 7 + 5) = st("+90").toString
+          cells(3 + i)(1 + j * 7 + 6) = st("max").toString
+        }
       }
     }
     cells
@@ -275,9 +338,14 @@ object ProducteurDesReport {
 
       for (j <- 0 until partitioners.length) {
         for (g <- 0 until graphs.length) {
-          cells(3 + i)(1 + j * graphs.length + g) = data.filter(mapa => {
+          val filtered = data.filter(mapa => {
             (mapa.getOrElse("graph", "") == graphs(g)) && (mapa.getOrElse("partitionerName", "") == partitioners(j)) && (mapa.getOrElse("N", "").toInt == ns(i))
-          }).head.getOrElse(metricName, "")
+          })
+          if (filtered.isEmpty) {
+            cells(3 + i)(1 + j * graphs.length + g) = "?"
+          } else {
+            cells(3 + i)(1 + j * graphs.length + g) = filtered.head.getOrElse(metricName, "")
+          }
         }
       }
     }

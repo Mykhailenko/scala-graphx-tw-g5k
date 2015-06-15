@@ -61,7 +61,7 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
 
   def calculcateAverageDegree(graph: Graph[Int, Int]): Array[(Int, Int)] = {
     val result = graph.degrees.collect.groupBy(_._2).map(a => (a._1, a._2.length)).toArray.sortWith(_._1 < _._1)
-    assert(result.map(x => x._2).reduce(_ + _) == numberOfVerices(graph))
+//    assert(result.map(x => x._2).reduce(_ + _) == numberOfVerices(graph))
     result
   }
   
@@ -99,7 +99,8 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
   }
 
   def calculateReplicatoins(graph: Graph[Int, Int]) = {
-    val q = graph.edges.partitionsRDD
+    val ge = graph.edges
+    val q = ge.partitionsRDD
     val p = q.mapValues((V) => (Set(V.srcIds: _*) ++ Set(V.dstIds: _*)).size)
     val w = p.map(a => a._2)
 
@@ -152,13 +153,14 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
     Math.sqrt(ar.map(e => Math.pow(e * partitioningNumber(graph) / numberOfEdges(graph) - 1, 2)).sum / partitioningNumber(graph))
   }
   def logCalculationAfterPartitioning(graph: Graph[Int, Int]) = {
+//    log("appName", sparkContex.getConf.get("spark.executor.id"))
     log("replicationFactor", (calculateReplicatoins(graph) / numberOfVerices(graph)).toString)
     log("balance", calculateBalance(graph).toString)
-    log("communicationCost", communicationalCost(graph).toString)
+//    log("communicationCost", communicationalCost(graph).toString)
     log("vertexCut", (calculateSetOfVerticesCatted(graph).size).toString)
     log("vertexNonCutted", (calculateSetOfVerticesNotCatted(graph).size).toString)
     log("numberVertices", numberOfVerices(graph).toString)
-    log("largestPartition", maxPartitionSize(graph).toString)
+//    log("largestPartition", maxPartitionSize(graph).toString)
     log("numberEdges", numberOfEdges(graph).toString)
     log("numberPartitions", partitioningNumber(graph).toString)
     log("edgeInPartitiones", numberOfEdgesInEachPartition(graph).toList.mkString(", "))

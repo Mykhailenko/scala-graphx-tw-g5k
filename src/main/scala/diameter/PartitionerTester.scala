@@ -44,22 +44,23 @@ object PartitionerTester {
       }
 
       logPartitioning {
+        graph = graph.partitionBy(PartitionStrategy.EdgePartition1D)
         graph = graph.partitionBy(PartitionStrategy.fromString(partitionerName))
         graph.edges.count
-//        val x = graph.edges.partitionsRDD.collect
-//        if (args(4) == "true") {
-//          var xxx = graph.edges.partitionsRDD.mapValues(b => (b.srcIds, b.dstIds).zipped map ((_, _)))
-//          val out = new PrintWriter(new FileWriter(new File(args(2) + ".partition")));
-//          out.println("There are " + xxx.count + " partitions");
-//          for ((id, edges) <- xxx.collect) {
-//            out.println("Partition id " + id.toLong)
-//            for ((src, dst) <- edges) {
-//              out.println(src + " --> " + dst)
-//            }
-//          }
-//          out.flush();
-//          out.close()
-//        }
+        val x = graph.edges.partitionsRDD.collect
+        if (args(4) == "true") {
+          var xxx = graph.edges.partitionsRDD.mapValues(b => (b.srcIds, b.dstIds).zipped map ((_, _)))
+          val out = new PrintWriter(new FileWriter(new File(args(2) + ".partition")));
+          out.println("There are " + xxx.count + " partitions");
+          for ((id, edges) <- xxx.collect) {
+            out.println("Partition id " + id.toLong)
+            for ((src, dst) <- edges) {
+              out.println(src + " --> " + dst)
+            }
+          }
+          out.flush();
+          out.close()
+        }
       }
       logCalculationAfterPartitioning(graph)
 

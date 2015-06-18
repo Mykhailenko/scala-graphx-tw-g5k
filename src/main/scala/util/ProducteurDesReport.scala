@@ -9,7 +9,7 @@ import java.io.FileWriter
 
 object ProducteurDesReport {
   //val metrics = Array("vertexCut", "largestPartition", "NSTDEV", "communicationCost", "replicationFactor", "balance", "Partitioning.time", "AlgorithExecution.time")
-  val metrics = Array("partAndExec", "vertexCut", "NSTDEV", "replicationFactor", "balance", "Partitioning.time", "AlgorithExecution.time") /// "networkshuffle"
+  val metrics = Array("GraphLoading.time", "loadPartExecSave", "applicationTime.time", "partAndExec", "vertexCut", "NSTDEV", "replicationFactor", "balance", "Partitioning.time", "AlgorithExecution.time") /// "networkshuffle"
   def main(args: Array[String]) {
     require(args.length >= 2, "Wrong argument number. Should be 2. Usage: <path_to_root> <prefix> [newopt]")
 
@@ -221,6 +221,10 @@ object ProducteurDesReport {
           mapa += ("N" -> partitionNumber.toString)
           val x = mapa.get("Partitioning.time").get.toInt + mapa.get("AlgorithExecution.time").get.toInt
           mapa += ("partAndExec" -> x.toString)
+          val all = mapa.get("Partitioning.time").get.toInt + mapa.get("AlgorithExecution.time").get.toInt +
+          mapa.get("ResultSaving.time").get.toInt + mapa.get("GraphLoading.time").get.toInt 
+          mapa += ("loadPartExecSave" -> all.toString)
+          
           data = data :+ mapa
         }
       }

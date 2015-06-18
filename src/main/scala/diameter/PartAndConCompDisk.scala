@@ -58,6 +58,7 @@ object PartAndConCompDisk  {
     out.println("Connected components calculated " + (t2 - t1) + " ms")
     out.flush()
     
+    sc.stop
 
     out.close
 

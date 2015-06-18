@@ -40,14 +40,21 @@ object MetricsBuilder {
 
       val lines = Source.fromFile(eventLogFile).getLines().toList
 
-      val parsed = lines.map(_.parseJson)
+      val flatted = lines.map(_.parseJson)
         .map(jsflatter(_))
-        .filter(map => {
-          map.get(".Event").isDefined && map.get(".Event").get.asInstanceOf[JsString].value == "SparkListenerTaskEnd"
-        })
+      
+      val parsed = flatted
+        .filter(getString(_, ".Event") == "SparkListenerTaskEnd")
 
+      val stageCompleted = flatted.filter(getString(_, ".Event") == "SparkListenerStageCompleted")
+        
+        
       def addMetric(metricName: String): Unit = {
         line ++= stats(getValuesForMetric(parsed, metricName)).map(_.toInt.toString)
+      }
+
+      def count(metricName: String): Unit = {
+        line :+= countDifferent(parsed, metricName).toString
       }
 
       count(".Stage ID")
@@ -63,14 +70,47 @@ object MetricsBuilder {
       addMetric(".Task Metrics.Disk Bytes Spilled")
       addMetric(".Task Metrics.Input Metrics.Bytes Read")
       addMetric(".Task Metrics.Shuffle Write Metrics.Shuffle Records Written")
-      addMetric(".Task Metrics.Shuffle Write Metrics.Shuffle Write Time")
+      addMetric(".Task Metrics.Shuffle Write Metrics.Shuffle Write Time") // 54 55 56 57 58   -95 min max + 95   55 54 58 57
       addMetric(".Task Metrics.Shuffle Write Metrics.Shuffle Bytes Written")
       addMetric(".Task Metrics.Shuffle Read Metrics.Remote Bytes Read")
 
-      def count(metricName: String): Unit = {
-        line :+= countDifferent(parsed, metricName).toString
+      val groupedByStages = parsed.groupBy(getBigDecimal(_, ".Stage ID")).toList
 
-      }
+      val dur = groupedByStages.map(group => {
+        val stageId = group._1
+        val tasks = group._2
+
+        val end = tasks.map(getBigDecimal(_, ".Task Info.Finish Time")).max
+        val start = tasks.map(getBigDecimal(_, ".Task Info.Launch Time")).min
+
+        val duration = end - start
+
+        duration
+
+      }).toList
+      line ++= stats(dur).map(_.toInt.toString)
+
+      val waiting = groupedByStages.map(group => {
+        val stageId = group._1
+        val tasks = group._2
+
+        
+        val slowest = tasks.maxBy(getBigDecimal(_, ".Task Info.Finish Time"))
+        val fastest = tasks.minBy(getBigDecimal(_, ".Task Info.Launch Time"))
+
+        val endOfSlowest = getBigDecimal(slowest, ".Task Info.Finish Time")
+        val endOfFastest = getBigDecimal(fastest, ".Task Info.Finish Time")
+        
+
+        val latency = endOfSlowest - endOfFastest
+        latency
+
+      }).toList
+      line ++= stats(waiting).map(_.toInt.toString)
+      
+      
+
+      //      val x = parsed.groupBy(getBigDecimal(_, ".Stage ID"))
 
       result :+= line.mkString(", ")
     }
@@ -105,7 +145,9 @@ object MetricsBuilder {
       val average = BigDecimal(data.sum.intValue / data.length)
       val max = data.max
       val min = data.min
-      var percentale95 = 1.96 * stddev(data) / Math.sqrt(data.length)
+      // confidence level 90% 	95% 	99%
+      //             zα/2 1.645 1.96 	2.575
+      var percentale95 = 2.575 * stddev(data) / Math.sqrt(data.length)
       val minus95 = average - percentale95
       val plus95 = average + percentale95
       List(min, minus95, average, plus95, max)

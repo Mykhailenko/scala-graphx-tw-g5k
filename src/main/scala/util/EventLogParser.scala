@@ -46,12 +46,13 @@ object EventLogParser {
 
     val lines = Source.fromFile(eventLogFile).getLines().toList
 
-    val parsed = lines.map(_.parseJson)
+    val rawdata = lines.map(_.parseJson)
       .map(jsflatter(_))
-      .filter(map => {
-        map.get(".Event").isDefined && map.get(".Event").get.asInstanceOf[JsString].value == "SparkListenerTaskEnd"
-      })
+    
+    val parsed = rawdata
+      .filter(getString(_, ".Event", "") == "SparkListenerTaskEnd")
 
+    createFile(eventLogFile.getAbsolutePath() + "ALL.csv", createContentOfCSVFile(rawdata))
     createFile(eventLogFile.getAbsolutePath() + ".csv", createContentOfCSVFile(parsed))
 
     val startTime = parsed.map(getBigDecimal(_, ".Task Info.Launch Time")).min
@@ -108,6 +109,11 @@ object EventLogParser {
     val numberOfTasks = parsed.length
     result +:= s"numberOfTasks: $numberOfTasks"
 
+//          getBigDecimal(x, ".Task Info.Finish Time") - getBigDecimal(x, ".Task Info.Launch Time"),
+
+    val durationOfAllTheTasks = parsed.map(getBigDecimal(_, ".Task Info.Finish Time")).max - parsed.map(getBigDecimal(_, ".Task Info.Launch Time")).min
+    result +:= s"durationOfAllTheTasks: $durationOfAllTheTasks"
+    
     val succedTasks = parsed.filter(getString(_, ".Task End Reason.Reason") == "Success")
 
     val numberSuccesShuffleTasks = succedTasks.filter(getString(_, ".Task Type") == "ShuffleMapTask").length
@@ -197,7 +203,7 @@ object EventLogParser {
     printf("")
 
     result.sortWith(_ < _) mkString ("\n")
-    
+
   }
 
   val gnuplotTemplate = """|set style fill transparent solid 0.85
@@ -227,13 +233,13 @@ object EventLogParser {
     else default
   }
 
-//  def getBigDouble(map: Map[String, JsValue], key: String, default: BigDecimal = null): BigDecimal = {
-//    require(map.get(key).isDefined || default != null, "There is no value with key: " + key)
-//    if (map.get(key).isDefined)
-//      map.get(key).get.asInstanceOf[JsNumber].value
-//    else default
-//  }
-  
+  //  def getBigDouble(map: Map[String, JsValue], key: String, default: BigDecimal = null): BigDecimal = {
+  //    require(map.get(key).isDefined || default != null, "There is no value with key: " + key)
+  //    if (map.get(key).isDefined)
+  //      map.get(key).get.asInstanceOf[JsNumber].value
+  //    else default
+  //  }
+
   def mapMapsToUsefulArray(x: Map[String, spray.json.JsValue]): Array[String] = {
     Array[String](
       getBigDecimal(x, ".Stage ID"),

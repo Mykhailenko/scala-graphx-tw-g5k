@@ -16,15 +16,22 @@ import scala.collection.JavaConversions
 
 case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new Random().nextLong() % 1000).toString + ".json", path: String = "./")(body: JsonLogger => Unit) extends Logger {
 
+  val appStartTime = System.currentTimeMillis(); 
+
   var mainObj: Map[String, String] = Map()
 
+  
   def log(key: String, value: String) {
     mainObj += (key -> value)
   }
 
   def presave {
+    val appEndTime = System.currentTimeMillis()
     mainObj += ("master" -> sparkContex.master)
     mainObj += ("name" -> sparkContex.appName)
+    mainObj += ("applicationTime.start" -> appStartTime.toString)
+    mainObj += ("applicationTime.end" -> appEndTime.toString)
+    mainObj += ("applicationTime.time" -> (appEndTime - appStartTime).toString)
 
   }
 

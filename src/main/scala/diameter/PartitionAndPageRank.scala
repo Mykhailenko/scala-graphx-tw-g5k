@@ -39,7 +39,7 @@ object PartitionAndPageRank {
       .setJars(SparkContext.jarOfClass(this.getClass).toList))
 
     var graph: Graph[Int, Int] = null
-    val r: Graph[Double,Double] = null
+    var r: Graph[Double,Double] = null
     JsonLogger(sc, filenameWithResult, "") { logger =>
       import logger._
 
@@ -55,7 +55,7 @@ object PartitionAndPageRank {
       }
       logCalculationAfterPartitioning(graph)
       logAlgorithExecution {
-        val r = graph.pageRank(0.1, 0.15)
+        r = graph.pageRank(0.1, 0.15)
         r.vertices.count
       }
       logResultSaving{

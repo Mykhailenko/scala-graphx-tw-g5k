@@ -42,7 +42,7 @@ object TaskDurationComparator {
       val submissionTime = getBigDecimal(x, ".Stage Info.Submission Time") - globalStartTime
       val completionTime = getBigDecimal(x, ".Stage Info.Completion Time") - globalStartTime
       (stageId, completionTime - submissionTime, submissionTime, completionTime )
-    }).toList.filter(_._2 > minStageDuration)
+    }).toList.filter(_._2 > minStageDuration).sortWith((a,b) => a._1 < b._1)
 
     println("There are " + longStages.length + " long stages; longer than " + minStageDuration + " ms.")
     
@@ -74,7 +74,7 @@ object TaskDurationComparator {
 
       List(taskId, start, end)
 
-    }).toList
+    }).toList.sortWith((a,b) => a(0) < b(0))
 
     content = data.map(_.mkString(", ")).mkString("\n")
     

@@ -9,125 +9,136 @@ import spray.json._
 import util.EventLogParser._
 
 object MetricsBuilder {
+
+  val partitioners = Array("randomvertexcut") //, "canonicalrandomvertexcut", "edgepartition1d", "edgepartition2d", "hybridcut", "hybridcutplus")
+
+  var headers = List[String]()
+
+  def addHeader(header: String): Unit = {
+    if (!headers.contains(header)) {
+      headers :+= header
+    }
+  }
+
   def main(args: Array[String]) {
 
-    require(args.length == 3)
+    require(args.length == 4)
 
     val root = new File(args(0))
-    
-    val prefix = args(1)
 
-    val resultPath = args(2)
+    val resultPath = if (args(1).charAt(args(1).length - 1) != '/') args(1) + '/' else args(1)
 
-    var result = List[String]()
+    val coresFrom = args(2).toInt
 
-    for (subfolder <- root.listFiles() if subfolder.isDirectory() && subfolder.getName().startsWith(prefix)) {
+    val coresTo = args(3).toInt
 
-      var line = List[String]()
+    for (partitioner <- partitioners) {
 
-      val partitionNumber = getPartitionNumberFromFileName(subfolder.getName())
-      println(partitionNumber)
+      var result = List[String]()
+      for (core <- coresFrom to coresTo) {
+        val createSubstring = s"$partitioner-$core"
+        val partitionNumber = core
+        var totalFlatted: List[Map[String, JsValue]] = List()
 
-      line :+= partitionNumber.toString
+        for (subfolder <- root.listFiles() if subfolder.isDirectory() && subfolder.getName().contains(createSubstring)) {
+          var subpath = subfolder.getAbsolutePath()
+          if (subpath.charAt(subpath.length() - 1) != '/') {
+            subpath += "/"
+          }
+          val eventLogFile = new File(subpath + "EVENT_LOG_1")
 
-      var subpath = subfolder.getAbsolutePath()
-      if (subpath.charAt(subpath.length() - 1) != '/') {
-        subpath += "/"
+          val lines = Source.fromFile(eventLogFile).getLines().toList
+
+          val flatted = lines.map(_.parseJson)
+            .map(jsflatter(_))
+
+          totalFlatted ++= flatted
+        }
+
+        println("totalFlatted.length = " + totalFlatted.length)
+        val parsed = totalFlatted.filter(getTasks(_))
+
+        var line = List[String]()
+        addHeader("Partition number")
+        line :+= partitionNumber.toString
+
+        def addMetric(metricName: String): Unit = {
+          val h = List[String]("min", "min99%", "average", "max99%", "max")
+          h.map(x => s"$metricName.$x").foreach(xx => addHeader(xx))
+          line ++= stats(getValuesForMetric(parsed, metricName)).map(_.toInt.toString)
+        }
+
+        def count(metricName: String): Unit = {
+          addHeader(metricName)
+          line :+= countDifferent(parsed, metricName).toString
+        }
+
+        count(".Stage ID")
+        count(".Task Info.Task ID")
+        addMetric(".Task Info.Getting Result Time")
+        addMetric(".Task Metrics.Executor Run Time")
+        addMetric(".Task Metrics.Executor Deserialize Time")
+        addMetric(".Task Metrics.Result Size")
+        addMetric(".Task Metrics.JVM GC Time")
+        addMetric(".Task Metrics.Result Serialization Time")
+        addMetric(".Task Metrics.Memory Bytes Spilled")
+        addMetric(".Task Metrics.Disk Bytes Spilled")
+        addMetric(".Task Metrics.Input Metrics.Bytes Read")
+        addMetric(".Task Metrics.Shuffle Write Metrics.Shuffle Records Written")
+        addMetric(".Task Metrics.Shuffle Write Metrics.Shuffle Write Time")
+        addMetric(".Task Metrics.Shuffle Write Metrics.Shuffle Bytes Written")
+        addMetric(".Task Metrics.Shuffle Read Metrics.Remote Bytes Read")
+
+        val groupedByStages = parsed.groupBy(getBigDecimal(_, ".Stage ID")).toList
+        val waiting = groupedByStages.map(group => {
+          val stageId = group._1
+          val tasks = group._2
+
+          val slowest = tasks.maxBy(getBigDecimal(_, ".Task Info.Finish Time"))
+          val fastest = tasks.minBy(getBigDecimal(_, ".Task Info.Launch Time"))
+
+          val endOfSlowest = getBigDecimal(slowest, ".Task Info.Finish Time")
+          val endOfFastest = getBigDecimal(fastest, ".Task Info.Finish Time")
+
+          val latency = endOfSlowest - endOfFastest
+          latency
+
+        }).toList
+
+        addHeader("Latency.min")
+        addHeader("Latency.min99%")
+        addHeader("Latency.average")
+        addHeader("Latency.max99%")
+        addHeader("Latency.max")
+        line ++= stats(waiting).map(_.toInt.toString)
+        val stagesCompleted = totalFlatted.filter(getString(_, ".Event") == "SparkListenerStageCompleted")
+
+        val stagesDurationTrue = stagesCompleted.map(x => {
+          val submissionTime = getBigDecimal(x, ".Stage Info.Submission Time")
+          val completionTime = getBigDecimal(x, ".Stage Info.Completion Time")
+          val stageDurationTrue = completionTime - submissionTime
+          stageDurationTrue
+        })
+
+        addHeader("Stage duration.min")
+        addHeader("Stage duration.min99%")
+        addHeader("Stage duration.average")
+        addHeader("Stage duration.max99%")
+        addHeader("Stage duration.max")
+        line ++= stats(stagesDurationTrue).map(_.toInt.toString)
+        result :+= line.mkString(", ")
       }
-      println(subpath)
-
-      val eventLogFile = new File(subpath + "EVENT_LOG_1")
-
-      val lines = Source.fromFile(eventLogFile).getLines().toList
-
-      val flatted = lines.map(_.parseJson)
-        .map(jsflatter(_))
-      
-      val parsed = flatted
-        .filter(getString(_, ".Event") == "SparkListenerTaskEnd")
-
-      val stagesCompleted = flatted.filter(getString(_, ".Event") == "SparkListenerStageCompleted")
-        
-        
-      def addMetric(metricName: String): Unit = {
-        line ++= stats(getValuesForMetric(parsed, metricName)).map(_.toInt.toString)
-      }
-
-      def count(metricName: String): Unit = {
-        line :+= countDifferent(parsed, metricName).toString
-      }
-
-      count(".Stage ID")
-      count(".Task Info.Task ID")
-
-      addMetric(".Task Info.Getting Result Time")
-      addMetric(".Task Metrics.Executor Run Time")
-      addMetric(".Task Metrics.Executor Deserialize Time")
-      addMetric(".Task Metrics.Result Size")
-      addMetric(".Task Metrics.JVM GC Time")
-      addMetric(".Task Metrics.Result Serialization Time")
-      addMetric(".Task Metrics.Memory Bytes Spilled")
-      addMetric(".Task Metrics.Disk Bytes Spilled")
-      addMetric(".Task Metrics.Input Metrics.Bytes Read")
-      addMetric(".Task Metrics.Shuffle Write Metrics.Shuffle Records Written")
-      addMetric(".Task Metrics.Shuffle Write Metrics.Shuffle Write Time") // 54 55 56 57 58   -95 min max + 95   55 54 58 57
-      addMetric(".Task Metrics.Shuffle Write Metrics.Shuffle Bytes Written")
-      addMetric(".Task Metrics.Shuffle Read Metrics.Remote Bytes Read")
-
-      val groupedByStages = parsed.groupBy(getBigDecimal(_, ".Stage ID")).toList
-
-      val dur = groupedByStages.map(group => {
-        val stageId = group._1
-        val tasks = group._2
-
-        val end = tasks.map(getBigDecimal(_, ".Task Info.Finish Time")).max
-        val start = tasks.map(getBigDecimal(_, ".Task Info.Launch Time")).min
-
-        val duration = end - start
-
-        duration
-
-      }).toList
-      line ++= stats(dur).map(_.toInt.toString)
-
-      val waiting = groupedByStages.map(group => {
-        val stageId = group._1
-        val tasks = group._2
-
-        
-        val slowest = tasks.maxBy(getBigDecimal(_, ".Task Info.Finish Time"))
-        val fastest = tasks.minBy(getBigDecimal(_, ".Task Info.Launch Time"))
-
-        val endOfSlowest = getBigDecimal(slowest, ".Task Info.Finish Time")
-        val endOfFastest = getBigDecimal(fastest, ".Task Info.Finish Time")
-        
-
-        val latency = endOfSlowest - endOfFastest
-        latency
-
-      }).toList
-      line ++= stats(waiting).map(_.toInt.toString)
-      
-      val stagesDurationTrue = stagesCompleted.map(x => {
-        val submissionTime = getBigDecimal(x, ".Stage Info.Submission Time")
-        val completionTime = getBigDecimal(x, ".Stage Info.Completion Time")
-        val stageDurationTrue = completionTime - submissionTime
-        stageDurationTrue
-      })
-      
-      line ++= stats(stagesDurationTrue).map(_.toInt.toString)
-      
-      
-
-      //      val x = parsed.groupBy(getBigDecimal(_, ".Stage ID"))
-
-      result :+= line.mkString(", ")
+      val headersZipped = headers.zipWithIndex.map(x => x._2 + " : " + x._1)
+      val content = "#" + headersZipped.mkString(", ") + "\n" + result.mkString("\n")
+      val out = new PrintWriter(new FileWriter(resultPath + partitioner + ".csv"));
+      out.print(content)
+      out.close
     }
 
-    val out = new PrintWriter(new FileWriter(resultPath));
-    out.print(result.mkString("\n"))
-    out.close
+  }
 
+  def getTasks(map: Map[String, spray.json.JsValue]): Boolean = {
+    getString(map, ".Event") == "SparkListenerTaskEnd"
   }
 
   def getPartitionNumberFromFileName(name: String): Int = {

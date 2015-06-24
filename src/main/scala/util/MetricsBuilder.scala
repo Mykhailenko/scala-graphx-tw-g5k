@@ -14,7 +14,7 @@ object MetricsBuilder {
     require(args.length == 3)
 
     val root = new File(args(0))
-
+    
     val prefix = args(1)
 
     val resultPath = args(2)
@@ -46,7 +46,7 @@ object MetricsBuilder {
       val parsed = flatted
         .filter(getString(_, ".Event") == "SparkListenerTaskEnd")
 
-      val stageCompleted = flatted.filter(getString(_, ".Event") == "SparkListenerStageCompleted")
+      val stagesCompleted = flatted.filter(getString(_, ".Event") == "SparkListenerStageCompleted")
         
         
       def addMetric(metricName: String): Unit = {
@@ -107,6 +107,15 @@ object MetricsBuilder {
 
       }).toList
       line ++= stats(waiting).map(_.toInt.toString)
+      
+      val stagesDurationTrue = stagesCompleted.map(x => {
+        val submissionTime = getBigDecimal(x, ".Stage Info.Submission Time")
+        val completionTime = getBigDecimal(x, ".Stage Info.Completion Time")
+        val stageDurationTrue = completionTime - submissionTime
+        stageDurationTrue
+      })
+      
+      line ++= stats(stagesDurationTrue).map(_.toInt.toString)
       
       
 

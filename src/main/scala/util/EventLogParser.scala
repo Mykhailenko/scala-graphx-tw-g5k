@@ -48,12 +48,29 @@ object EventLogParser {
 
     val rawdata = lines.map(_.parseJson)
       .map(jsflatter(_))
-    
+
+    val stagesOnly = rawdata.filter(getString(_, ".Event") == "SparkListenerStageCompleted")
+      .map(original => {
+        var newMap: Map[String, JsValue] = Map()
+        val keys = List(".Event", ".Stage Info.Details", ".Stage Info.Completion Time", ".Stage Info.Stage ID",
+          ".Stage Info.Stage Name", ".Stage Info.Submission Time", ".Stage Info.Number of Tasks")
+        keys.foreach(x => {
+          newMap += (x -> original(x))
+        })
+        val submissionTime = getBigDecimal(original, ".Stage Info.Submission Time")
+        val completionTime = getBigDecimal(original, ".Stage Info.Completion Time")
+        val duration = completionTime - submissionTime
+        newMap += ("Duration in ms" -> JsNumber(duration))
+        newMap
+      })
+
     val parsed = rawdata
       .filter(getString(_, ".Event", "") == "SparkListenerTaskEnd")
-
-    createFile(eventLogFile.getAbsolutePath() + "ALL.csv", createContentOfCSVFile(rawdata))
-    createFile(eventLogFile.getAbsolutePath() + ".csv", createContentOfCSVFile(parsed))
+    val newpath =  eventLogFile.getAbsolutePath() + "ALL.csv"
+    println(s"saving to $newpath")
+    createFile(newpath, createContentOfCSVFile(rawdata))
+//    createFile(eventLogFile.getAbsolutePath() + ".csv", createContentOfCSVFile(parsed))
+//    createFile(eventLogFile.getAbsolutePath() + "Stages.csv", createContentOfCSVFile(stagesOnly))
 
     val startTime = parsed.map(getBigDecimal(_, ".Task Info.Launch Time")).min
 
@@ -94,11 +111,11 @@ object EventLogParser {
       Array(maxTaskId, duration, durationMax, bytesReadAdnWrie, bytesReadAdnWrieMax, shuffleBlockTime, shuffleBlockTimeMax)
     }).sortWith((a, b) => a(0) < b(0))
 
-    createFile(rootPath + "resultTask", linesForResultTask.mkString("\n"))
-    createFile(rootPath + "shuffleTask", linesForShuffleTask.map(_.mkString(", ")).mkString("\n"))
-    createFile(rootPath + "stages", linesForStages.map(_.mkString(", ")).mkString("\n"))
-    createFile(rootPath + "taskstages.gnu", String.format(gnuplotTemplate, rootPath))
-    createFile(rootPath + "generalStats", createContent(parsed))
+//    createFile(rootPath + "resultTask", linesForResultTask.mkString("\n"))
+//    createFile(rootPath + "shuffleTask", linesForShuffleTask.map(_.mkString(", ")).mkString("\n"))
+//    createFile(rootPath + "stages", linesForStages.map(_.mkString(", ")).mkString("\n"))
+//    createFile(rootPath + "taskstages.gnu", String.format(gnuplotTemplate, rootPath))
+//    createFile(rootPath + "generalStats", createContent(parsed))
   }
 
   def createContent(parsed: List[Map[String, JsValue]]): String = {
@@ -109,11 +126,11 @@ object EventLogParser {
     val numberOfTasks = parsed.length
     result +:= s"numberOfTasks: $numberOfTasks"
 
-//          getBigDecimal(x, ".Task Info.Finish Time") - getBigDecimal(x, ".Task Info.Launch Time"),
+    //          getBigDecimal(x, ".Task Info.Finish Time") - getBigDecimal(x, ".Task Info.Launch Time"),
 
     val durationOfAllTheTasks = parsed.map(getBigDecimal(_, ".Task Info.Finish Time")).max - parsed.map(getBigDecimal(_, ".Task Info.Launch Time")).min
     result +:= s"durationOfAllTheTasks: $durationOfAllTheTasks"
-    
+
     val succedTasks = parsed.filter(getString(_, ".Task End Reason.Reason") == "Success")
 
     val numberSuccesShuffleTasks = succedTasks.filter(getString(_, ".Task Type") == "ShuffleMapTask").length
@@ -232,13 +249,6 @@ object EventLogParser {
       map.get(key).get.asInstanceOf[JsNumber].value
     else default
   }
-
-  //  def getBigDouble(map: Map[String, JsValue], key: String, default: BigDecimal = null): BigDecimal = {
-  //    require(map.get(key).isDefined || default != null, "There is no value with key: " + key)
-  //    if (map.get(key).isDefined)
-  //      map.get(key).get.asInstanceOf[JsNumber].value
-  //    else default
-  //  }
 
   def mapMapsToUsefulArray(x: Map[String, spray.json.JsValue]): Array[String] = {
     Array[String](

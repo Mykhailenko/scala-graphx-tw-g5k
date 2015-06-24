@@ -9,6 +9,7 @@ import util.EventLogParser._
 import java.io.PrintWriter
 import java.io.FileWriter
 import scala.math.BigDecimal
+import akka.dispatch.Foreach
 
 object StageDurationComparator {
   def main(args: Array[String]) {
@@ -26,6 +27,8 @@ object StageDurationComparator {
       .map(jsflatter(_))
       .filter(getString(_, ".Event", "") == "SparkListenerTaskEnd")
 
+    parsed.groupBy(getBigDecimal(_, ".Stage ID")).toList.foreach(x => println("id =" + x._1 + " number of tasks = " + x._2.length))
+      
     val globalStartTime = parsed.map(getBigDecimal(_, ".Task Info.Launch Time")).min  
     
     val orderedStageIDs = parsed.map(getBigDecimal(_, ".Stage ID")).toSet.toList.sorted
@@ -42,9 +45,14 @@ object StageDurationComparator {
 
     val s = for (ip <- ips) yield {
 
+      println(s"ip = $ip")
+      
       val machineTasks = grouped.get(ip).get
 
-      val groupedByStages = machineTasks.groupBy(getBigDecimal(_, ".Stage ID"))
+      val groupedByStages = machineTasks.groupBy(getBigDecimal(_, ".Stage ID")).toList.sortWith((a,b) => a._1 < b._1)
+      
+//      groupedByStages.toList.foreach(x => println("id =" + x._1 + " number of tasks = " + x._2.length))
+      
 
       val data = groupedByStages.flatMap(group => {
         val stageId = group._1
@@ -62,6 +70,8 @@ object StageDurationComparator {
       (a, b).zipped map(_ ++ _)
     })
 
+    
+    
     val content = zipMapped.map(_.mkString(", ")).mkString("\n")
     
     val out = new PrintWriter(new FileWriter(resultFile));
@@ -69,4 +79,11 @@ object StageDurationComparator {
     out.close
     
   }
+  
+  
+  
+  
+  
+  
+  
 }

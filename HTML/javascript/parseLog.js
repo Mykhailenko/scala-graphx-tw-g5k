@@ -52,6 +52,7 @@ function getCompletedStages() {
     });
     return {
         type: "line",
+          name: "Stages",
         ctype: "stage",
         id: 0,
         color: 'rgba(223, 83, 83, .5)',

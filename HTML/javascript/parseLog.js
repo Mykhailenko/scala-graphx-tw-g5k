@@ -2,6 +2,7 @@ var allEvents;
 var stageCompleted;
 var taskCompleted;
 var taskStartEnd;
+var boxplotData;
 //map real Stage ID to index in array (0, 1, 2...)
 //Example : stageIndexMapping[50] = 1 if Stage 50 is the second in execution order
 var stageIndexMapping = {};
@@ -27,10 +28,13 @@ function parseLog(text) {
 
     linkCompletedTasksToStages();
     var sw = getShuffleWrite();
-    var tSE = getTasksStartEnd()
+    var tSE = getTasksStartEnd();
+    var bp = getBoxPlotData();
     loadStageGraph('#container', [cs, ct], 'Stages/Tasks Duration', 'Stage', 'Time (ms)', formatter)
     loadStageGraph('#shuffleWrite', [sw], 'ShuffleWrite Size', 'Stage', 'Byte', formatter)
-    loadStageGraph('#tasksTime', [tSE],' Task startTime endTime ',  'Task ID', 'Time (ms)',formatter, false)
+    loadStageGraph('#tasksTime', [tSE], ' Task startTime endTime ', 'Task ID', 'Time (ms)', formatter, false)
+    loadStageGraph('#boxplot', [bp], ' Task Execution Time per stage ', 'Stage ID', 'Time (ms)', formatter, false)
+
 
 };
 
@@ -40,20 +44,22 @@ function getCompletedStages() {
         var info = x["Stage Info"]
         stageIndexMapping[info["Stage ID"]] = index;
         return {
+            ctype : 'stage',
             x: index,
             y: info["Completion Time"] - info["Submission Time"],
-            stage : {
-            duration : info["Completion Time"] - info["Submission Time"],
-            stageID: info["Stage ID"],
-            numTasks: info["Number of Tasks"],
-            taskList: []
+            stage: {
+                duration: info["Completion Time"] - info["Submission Time"],
+                stageID: info["Stage ID"],
+                numTasks: info["Number of Tasks"],
+                taskList: [],
+                taskTime: []
             }
         }
     });
     return {
         type: "line",
-          name: "Stages",
-        ctype: "stage",
+        name: "Stages",
+       // ctype: "stage",
         id: 0,
         color: 'rgba(223, 83, 83, .5)',
         data: parsedStages
@@ -80,9 +86,9 @@ function getCompletedTasks() {
                 realID: info["Task ID"],
                 stageID: x["Stage ID"],
                 host: info["Host"],
-                launchTime : info["Launch Time"],
-                finishTime : info["Finish Time"],
-                duration : info["Finish Time"] - info["Launch Time"],
+                launchTime: info["Launch Time"],
+                finishTime: info["Finish Time"],
+                duration: info["Finish Time"] - info["Launch Time"],
                 deserializeTime: metrics["Executor Deserialize Time"],
                 resultSize: metrics["Result Size"],
                 runTime: metrics["Executor Run Time"],
@@ -110,15 +116,15 @@ function getCompletedTasks() {
 function getShuffleWrite() {
     shuffleWriteTasks = parsedTasks.map(function(elem, index) {
         return {
-             ctype: "task",
+            ctype: "task",
             x: elem["x"],
             y: elem.task.shuffleWritten,
-            task : elem.task
+            task: elem.task
         }
     });
     return {
         type: 'scatter',
-        name : 'Shuffle Write',
+        name: 'Shuffle Write',
         id: 2,
         color: 'rgba(68, 170, 213, 0.8)',
         data: shuffleWriteTasks
@@ -131,39 +137,67 @@ function getTasksStartEnd() {
             ctype: "task",
             x: elem.task.realID,
             low: elem.task.launchTime,
-            high : elem.task.finishTime,
-            task : elem.task
+            high: elem.task.finishTime,
+            task: elem.task
         }
     });
 
-  function compare(a,b) {
-   return a.x - b.x;
- }
-   taskStartEnd.sort(compare);
-//now that it is sorted, substract the start time of the first
-var min = taskStartEnd[0].low;
-taskStartEnd.map(function(elem) {
-     elem.low -= min;
-     elem.high -= min;
-});
+    function compare(a, b) {
+        return a.x - b.x;
+    }
+    taskStartEnd.sort(compare);
+    //now that it is sorted, substract the start time of the first
+    var min = taskStartEnd[0].low;
+    taskStartEnd.map(function(elem) {
+        elem.low -= min;
+        elem.high -= min;
+    });
 
 
     return {
         type: 'columnrange',
 
-        name : 'Task Start End',
+        name: 'Task Start End',
         id: 3,
         color: 'rgba(68, 170, 213, 0.8)',
         data: taskStartEnd
-        }
+    }
 }
+
+function getBoxPlotData() {
+    boxplotData = parsedStages.map(function(elem) {
+        var nums = stats(elem.stage.taskTime);
+        return {
+            ctype : "stage",
+            x: elem.x,
+            low: nums.min(),
+            q1: nums.q1(),
+            median: nums.median(),
+            q3: nums.q3(),
+            high: nums.max(),
+            stage : elem.stage
+        }
+    });
+    return {
+        type: 'boxplot',
+        name: 'Task execution time',
+        id: 4,
+        color: 'rgba(68, 170, 213, 0.8)',
+        data: boxplotData
+
+    }
+}
+
+
 
 function linkCompletedTasksToStages() {
     for (var i = 0; i < parsedTasks.length; i++) {
         var tID = parsedTasks[i].task.realID;
+        var tTime = parsedTasks[i].task.duration;
         var sID = parsedTasks[i].task.stageID;
         var index = stageIndexMapping[sID];
         parsedStages[index].stage.taskList.push(tID);
+        parsedStages[index].stage.taskTime.push(tTime);
     }
 
 }
@@ -185,7 +219,7 @@ function loadStageGraph(element, data, title, xtitle, ytitle, formatter, inverte
     $(function() {
         $(element).highcharts({
             chart: {
-inverted : inverted,
+                inverted: inverted,
                 zoomType: 'xy'
             },
             title: {
@@ -238,6 +272,7 @@ inverted : inverted,
                 },
                 series: {
                     cursor: 'pointer',
+                    stickyTracking : false,
 
                     point: {
                         events: {
@@ -250,7 +285,9 @@ inverted : inverted,
 
             },
             tooltip: {
-                formatter: formatter
+                formatter: formatter,
+                shadow : true,
+                hideDelay : 10
                 // crosshairs : true
                 // headerFormat: '<b>{series.name} {point.x}</b>',
                 // pointFormat: '<br>{point.y} ms'
@@ -266,7 +303,7 @@ function formatter() {
         return stageFormatter(this);
     }
     if (this.point.ctype == 'task') {
-    //if (this.series.options.id ==1 || this.series.options.id ==2 ){
+        //if (this.series.options.id ==1 || this.series.options.id ==2 ){
         return taskFormatter(this);
     }
 
@@ -275,7 +312,7 @@ function formatter() {
 function stageFormatter(th) {
     //console.log(this.point.realID)
     // console.log(this.y)
-    s = '<b>Stage : ' + th.point.stageID + '</b>';
+    s = '<b>Stage : ' + th.point.stage.stageID + '</b>';
     s += '<br> Num Tasks : ' + th.point.stage.numTasks;
     s += '<br> Duration : ' + th.point.y + ' ms';
     s += '<br> Tasks  : ' + th.point.stage.taskList;
@@ -335,7 +372,7 @@ function details(point) {
         }
 
     } else {
-         var elem = point.stage;
+        var elem = point.stage;
         s = '<b> Stage ID : ' + elem.stageID + '</b>';
         s += '<br> Duration : ' + elem.duration + ' ms';
         s += '<br> Tasks  : ' + elem.taskList;

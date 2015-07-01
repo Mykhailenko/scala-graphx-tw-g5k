@@ -11,6 +11,222 @@ var parsedStages;
 var parsedTasks;
 
 
+function darkTheme() {
+    Highcharts.createElement('link', {
+        href: '//fonts.googleapis.com/css?family=Unica+One',
+        rel: 'stylesheet',
+        type: 'text/css'
+    }, null, document.getElementsByTagName('head')[0]);
+
+    Highcharts.theme = {
+        colors: ["#2b908f", "#90ee7e", "#f45b5b", "#7798BF", "#aaeeee", "#ff0066", "#eeaaee",
+            "#55BF3B", "#DF5353", "#7798BF", "#aaeeee"
+        ],
+        chart: {
+            backgroundColor: {
+                linearGradient: {
+                    x1: 0,
+                    y1: 0,
+                    x2: 1,
+                    y2: 1
+                },
+                stops: [
+                    [0, '#2a2a2b'],
+                    [1, '#3e3e40']
+                ]
+            },
+            style: {
+                fontFamily: "'Unica One', sans-serif"
+            },
+            plotBorderColor: '#606063'
+        },
+        title: {
+            style: {
+                color: '#E0E0E3',
+                textTransform: 'uppercase',
+                fontSize: '20px'
+            }
+        },
+        subtitle: {
+            style: {
+                color: '#E0E0E3',
+                textTransform: 'uppercase'
+            }
+        },
+        xAxis: {
+            gridLineColor: '#707073',
+            labels: {
+                style: {
+                    color: '#E0E0E3'
+                }
+            },
+            lineColor: '#707073',
+            minorGridLineColor: '#505053',
+            tickColor: '#707073',
+            title: {
+                style: {
+                    color: '#A0A0A3'
+
+                }
+            }
+        },
+        yAxis: {
+            gridLineColor: '#707073',
+            labels: {
+                style: {
+                    color: '#E0E0E3'
+                }
+            },
+            lineColor: '#707073',
+            minorGridLineColor: '#505053',
+            tickColor: '#707073',
+            tickWidth: 1,
+            title: {
+                style: {
+                    color: '#A0A0A3'
+                }
+            }
+        },
+        tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            style: {
+                color: '#F0F0F0'
+            }
+        },
+        plotOptions: {
+            series: {
+                dataLabels: {
+                    color: '#B0B0B3'
+                },
+                marker: {
+                    lineColor: '#333'
+                }
+            },
+            boxplot: {
+                fillColor: '#505053'
+            },
+            candlestick: {
+                lineColor: 'white'
+            },
+            errorbar: {
+                color: 'white'
+            }
+        },
+        legend: {
+            itemStyle: {
+                color: '#E0E0E3'
+            },
+            itemHoverStyle: {
+                color: '#FFF'
+            },
+            itemHiddenStyle: {
+                color: '#606063'
+            }
+        },
+        credits: {
+            style: {
+                color: '#666'
+            }
+        },
+        labels: {
+            style: {
+                color: '#707073'
+            }
+        },
+
+        drilldown: {
+            activeAxisLabelStyle: {
+                color: '#F0F0F3'
+            },
+            activeDataLabelStyle: {
+                color: '#F0F0F3'
+            }
+        },
+
+        navigation: {
+            buttonOptions: {
+                symbolStroke: '#DDDDDD',
+                theme: {
+                    fill: '#505053'
+                }
+            }
+        },
+
+        // scroll charts
+        rangeSelector: {
+            buttonTheme: {
+                fill: '#505053',
+                stroke: '#000000',
+                style: {
+                    color: '#CCC'
+                },
+                states: {
+                    hover: {
+                        fill: '#707073',
+                        stroke: '#000000',
+                        style: {
+                            color: 'white'
+                        }
+                    },
+                    select: {
+                        fill: '#000003',
+                        stroke: '#000000',
+                        style: {
+                            color: 'white'
+                        }
+                    }
+                }
+            },
+            inputBoxBorderColor: '#505053',
+            inputStyle: {
+                backgroundColor: '#333',
+                color: 'silver'
+            },
+            labelStyle: {
+                color: 'silver'
+            }
+        },
+
+        navigator: {
+            handles: {
+                backgroundColor: '#666',
+                borderColor: '#AAA'
+            },
+            outlineColor: '#CCC',
+            maskFill: 'rgba(255,255,255,0.1)',
+            series: {
+                color: '#7798BF',
+                lineColor: '#A6C7ED'
+            },
+            xAxis: {
+                gridLineColor: '#505053'
+            }
+        },
+
+        scrollbar: {
+            barBackgroundColor: '#808083',
+            barBorderColor: '#808083',
+            buttonArrowColor: '#CCC',
+            buttonBackgroundColor: '#606063',
+            buttonBorderColor: '#606063',
+            rifleColor: '#FFF',
+            trackBackgroundColor: '#404043',
+            trackBorderColor: '#404043'
+        },
+
+        // special colors for some of the
+        legendBackgroundColor: 'rgba(0, 0, 0, 0.5)',
+        background2: '#505053',
+        dataLabelsColor: '#B0B0B3',
+        textColor: '#C0C0C0',
+        contrastTextColor: '#F0F0F3',
+        maskColor: 'rgba(255,255,255,0.3)'
+    };
+
+    // Apply the theme
+    Highcharts.setOptions(Highcharts.theme);
+}
+
 function parseLog(text) {
 
     allEvents = text.split("\n").map(function(x) {
@@ -23,6 +239,7 @@ function parseLog(text) {
             }
         }
     });
+    buildJobInfo();
     var cs = getCompletedStages();
     var ct = getCompletedTasks();
 
@@ -30,13 +247,54 @@ function parseLog(text) {
     var sw = getShuffleWrite();
     var tSE = getTasksStartEnd();
     var bp = getBoxPlotData();
+    var gs = getStagesTime();
+    var gt = getTasksTimePerHost();
     loadStageGraph('#container', [cs, ct], 'Stages/Tasks Duration', 'Stage', 'Time (ms)', formatter)
     loadStageGraph('#shuffleWrite', [sw], 'ShuffleWrite Size', 'Stage', 'Byte', formatter)
     loadStageGraph('#tasksTime', [tSE], ' Task startTime endTime ', 'Task ID', 'Time (ms)', formatter, false)
-    loadStageGraph('#boxplot', [bp], ' Task Execution Time per stage ', 'Stage ID', 'Time (ms)', formatter, false)
+    loadStageGraph('#boxplot', [bp], ' Task Execution Time per Stage ', 'Stage ID', 'Time (ms)', formatter, false)
+     loadStageGraph('#pieStage', [gs], ' Stage Execution Time ', 'Host', 'Time (ms)', null, false)
+
+    loadStageGraph('#pieHost', [gt], ' Task Execution Time per Host ', 'Host', 'Time (ms)', null, false)
 
 
 };
+
+function buildJobInfo() {
+    var jobInfo = filterEvent(allEvents, "SparkListenerEnvironmentUpdate")[0];
+    var sparkProperties = jobInfo["Spark Properties"];
+    var timeStart = new Date(filterEvent(allEvents, "SparkListenerApplicationStart")[0]["Timestamp"]);
+    var info = {
+      jar :  sparkProperties["spark.jars"],
+      app :  sparkProperties["spark.app.name"],
+      driver : sparkProperties["spark.driver.host"],
+      master : sparkProperties["spark.master"],
+      driverMemory : sparkProperties["spark.driver.memory"],
+      executorMemory : sparkProperties["spark.executor.memory"],
+    }
+    var s = "";
+  //  s+="<summary> Job Details </summary>";
+  //  s+="<ul>";
+    // s+="<li> Started on " + timeStart + "</li>";
+    // s+="<li> Jar : " +  info.jar + "</li>";
+    // s+="<li> App : "  + info.app  + "</li>";
+    // s+="<li>Driver : " + info.driver + "</li>";
+    // s+="<li> Master : " + info.master + "</li>";
+    // s+="<li> Driver Memory " + info.driverMemory  + "</li>";
+    // s+="<li> Executor Memory " + info.executorMemory  + "</li>";
+    //s+="</ul></details>";
+    s+="<b> Started on </b>" + timeStart + "<br>";
+    s+="<b> Jar </b>" +  info.jar + "<br>";
+    s+="<b> App </b>"  + info.app  + "<br>";
+    s+="<b> Driver </b>" + info.driver + "<br>";
+    s+="<b> Master </b>" + info.master + "<br>";
+    s+="<b> Driver Memory </b>" + info.driverMemory  + "<br>";
+    s+="<b> Executor Memory </b>" + info.executorMemory  + "<br>";
+
+
+    $('#jobInfo').html(s);
+}
+
 
 function getCompletedStages() {
     stageCompleted = filterEvent(allEvents, "SparkListenerStageCompleted");
@@ -44,7 +302,7 @@ function getCompletedStages() {
         var info = x["Stage Info"]
         stageIndexMapping[info["Stage ID"]] = index;
         return {
-            ctype : 'stage',
+            ctype: 'stage',
             x: index,
             y: info["Completion Time"] - info["Submission Time"],
             stage: {
@@ -59,7 +317,7 @@ function getCompletedStages() {
     return {
         type: "line",
         name: "Stages",
-       // ctype: "stage",
+        // ctype: "stage",
         id: 0,
         color: 'rgba(223, 83, 83, .5)',
         data: parsedStages
@@ -168,14 +426,14 @@ function getBoxPlotData() {
     boxplotData = parsedStages.map(function(elem) {
         var nums = stats(elem.stage.taskTime);
         return {
-            ctype : "stage",
+            ctype: "stage",
             x: elem.x,
             low: nums.min(),
             q1: nums.q1(),
             median: nums.median(),
             q3: nums.q3(),
             high: nums.max(),
-            stage : elem.stage
+            stage: elem.stage
         }
     });
     return {
@@ -188,6 +446,87 @@ function getBoxPlotData() {
     }
 }
 
+//For pie drawing
+function getTasksTimePerHost() {
+    var hostTime = {}
+    var total = 0;
+    for (var i = 0; i < parsedTasks.length; i++) {
+        var elem = parsedTasks[i];
+        if (hostTime[elem.task.host] == undefined) {
+            hostTime[elem.task.host] = 0;
+        }
+        hostTime[elem.task.host] += elem.task.duration;
+        total += elem.task.duration;
+    };
+    var data = [];
+    for (var index in hostTime) {
+        if (!hostTime.hasOwnProperty(index)) {
+            continue;
+        }
+        var f = Math.round(hostTime[index] * 100.0 / total, 2);
+        data.push({
+            name: index + " (" + f + " %)",
+            y: hostTime[index]
+        });
+        //  console.log(index);
+        // console.log(obj[index]);
+    }
+    // for (var i =0;i<hostTime.length;i++) {
+    //     data.push({name});
+    // }
+    return {
+        type: "pie",
+        name: "Time per host",
+        colorByPoint: true,
+        data: data
+    }
+}
+//For pie Drawing
+function getStagesTime() {
+   var stageTime = {}
+   var total = 0;
+   for (var i = 0; i < parsedStages.length; i++) {
+        var elem = parsedStages[i];
+        if (stageTime[elem.stage.stageID] == undefined) {
+            stageTime[elem.stage.stageID] = 0;
+        }
+        stageTime[elem.stage.stageID] = elem.stage.duration;
+        total += elem.stage.duration;
+    }
+
+    var data = [];
+    for (var index in stageTime) {
+        if (!stageTime.hasOwnProperty(index)) {
+            continue;
+        }
+        var f = Math.round(stageTime[index] * 100.0 / total, 2);
+        data.push({
+            name: index + " (" + f + " %)",
+            y: stageTime[index]
+        });
+        //  console.log(index);
+        // console.log(obj[index]);
+    }
+
+
+    // for (var i = 0; i < stageTime.length; i++) {
+    //     var f = Math.round(stageTime[i] * 100.0 / total, 2);
+    //     data.push({
+    //         name: i + " (" + f + " %)",
+    //         y: stageTime[i]
+    //     });
+    //     //  console.log(index);
+    //     // console.log(obj[index]);
+    // }
+
+
+    return {
+        type: "pie",
+        name: "Time per stage",
+        colorByPoint: true,
+        data: data
+    }
+}
 
 
 function linkCompletedTasksToStages() {
@@ -272,7 +611,7 @@ function loadStageGraph(element, data, title, xtitle, ytitle, formatter, inverte
                 },
                 series: {
                     cursor: 'pointer',
-                    stickyTracking : false,
+                    stickyTracking: false,
 
                     point: {
                         events: {
@@ -286,8 +625,8 @@ function loadStageGraph(element, data, title, xtitle, ytitle, formatter, inverte
             },
             tooltip: {
                 formatter: formatter,
-                shadow : true,
-                hideDelay : 10
+                shadow: true,
+                hideDelay: 10
                 // crosshairs : true
                 // headerFormat: '<b>{series.name} {point.x}</b>',
                 // pointFormat: '<br>{point.y} ms'

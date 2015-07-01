@@ -2,17 +2,15 @@
 <html>
 <head>
 <title>Spark Event Log Analyzer</title>
+
+<link rel="stylesheet" href="css/bootstrap.min.css">
+
 <script src="javascript/jquery.min.js"></script>
-<!-- <script src="http://cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.js" charset="utf-8"></script>
-<script src="http://cdnjs.cloudflare.com/ajax/libs/nvd3/1.1.15-beta/nv.d3.js"></script>
-<link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/nvd3/1.1.15-beta/nv.d3.css"/> -->
-<!-- <script src="Chart.min.js"></script> -->
 <script src="javascript/highcharts.js"></script>
 <script src="http://code.highcharts.com/highcharts-more.js"></script>
-
 <script src="javascript/parseLog.js"></script>
 <script src="javascript/stats.js"></script>
-
+<script src="javascript/bootstrap.min.js"></script>
 
 
 </head>
@@ -20,18 +18,44 @@
 <!--   <div id="chart">
     <svg style="height:500px"></svg>
   </div> -->
-  <section>
-<div id="container" style="width:85%; height:500px; float:left"></div>
-<div id="details" style="margin: 5px; height:500px; overflow-x: scroll;"></div>
-<div id="shuffleWrite" style="width:85%; height:500px; float:left"></div>
-<div id="tasksTime" style="width:85%; height:500px; float:left"></div>
-<div id="boxplot" style="width:85%; height:500px; float:left"></div>
+<div>
+    <ul id="tabs" class="nav nav-tabs">
+        <li class="active" ><a href="#job">Job</a>
+        </li>
+        <li><a href="#charts">Stages/Tasks</a>
+        </li>
+    </ul>
+</div>
 
+ <div id="my-tab-content" class="tab-content">
+    <div class="tab-pane active" id="job">
+        <div id="jobInfo" style=" margin-left : 10px;"></div>
+        <div style="float:left">
+            <div id="pieStage" style="float:left"></div>
+            <div id="pieHost" style="float:left"></div>
+        </div>
+    </div>
+    <div class="tab-pane" id="charts">
+      <div id="container" style="width:85%; height:500px; float:left"></div>
+      <div id="details" style="margin: 5px; height:500px; overflow-x: scroll;"></div>
+      <div id="shuffleWrite" style="width:85%; height:500px; float:left"></div>
+      <div id="tasksTime" style="width:85%; height:500px; float:left"></div>
+      <div id="boxplot" style="width:85%; height:500px; float:left"></div>
 
+    </div>
 
-</section>
+</div>
+
   <script>
+   // darkTheme();
      $.get("EVENT_LOG_1", parseLog);
-  </script>
+    //   jQuery(document).ready(function ($) {
+    //     $('#tabs').tab();
+    // });
+    $('#tabs a').click(function (e) {
+    //  e.preventDefault()
+      $(this).tab('show')
+    })
+</script>
 </body>
 </html>

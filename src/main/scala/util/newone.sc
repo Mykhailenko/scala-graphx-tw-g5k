@@ -22,12 +22,18 @@ object newone {
 
   }                                               //> zip: (a: List[List[Int]], b: List[List[Int]], default: List[Int])List[List[I
                                                   //| nt]]
+  val s = "-partitionandpagerank-twitter_1.txt-edgepartition1d-7-cores-1434447778082"
+                                                  //> s  : String = -partitionandpagerank-twitter_1.txt-edgepartition1d-7-cores-14
+                                                  //| 34447778082
+  val ar = s.split("-")                           //> ar  : Array[String] = Array("", partitionandpagerank, twitter_1.txt, edgepar
+                                                  //| tition1d, 7, cores, 1434447778082)
+  ar(1).substring("partitionand".length)          //> res2: String = pagerank
+  val ww = ar(2).split("_")                       //> ww  : Array[String] = Array(twitter, 1.txt)
+  ww(0)                                           //> res3: String = twitter
+  ww(1).replaceAll("[^\\d]", "").toInt            //> res4: Int = 1
+  ar(3)                                           //> res5: String = edgepartition1d
+	class A {
+	
 
-  val a = List(List(1, 2), List(2, 2), List(4, 4), List(5, 4))
-                                                  //> a  : List[List[Int]] = List(List(1, 2), List(2, 2), List(4, 4), List(5, 4))
-  val b = List(List(2, 10), List(3, 4), List(5, 3))
-                                                  //> b  : List[List[Int]] = List(List(2, 10), List(3, 4), List(5, 3))
-  val d = List(0, 0)                              //> d  : List[Int] = List(0, 0)
-  zip(a, b)                                       //> res2: List[List[Int]] = List(List(1, 2, 2, 10), List(2, 2, 3, 4), List(4, 4,
-                                                  //|  5, 3), List(5, 4, 0, 0, 0))
+	}	
 }

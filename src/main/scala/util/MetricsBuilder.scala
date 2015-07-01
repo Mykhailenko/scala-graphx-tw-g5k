@@ -14,10 +14,241 @@ object MetricsBuilder {
 
   var headers = List[String]()
 
+  var metrics = Set[String]()
+
+  var eventLogFilter = fileParses(parseEventLogFile, getMetainfoFromEventLogFile, listOfFilesEventLog) _
+
+  def addMetaMetric(metric: String): Unit = {
+    metrics += metric.replaceAll("\\s+", "").replaceAll("\\.", "");
+  }
+
   def addHeader(header: String): Unit = {
-    if (!headers.contains(header)) {
-      headers :+= header
+    val h = header.replaceAll("\\s+", "").replaceAll("\\.", "");
+    if (!headers.contains(h)) {
+      headers :+= h
     }
+  }
+
+  def countParsing(rootFolder: File,
+    graph: String,
+    version: String,
+    partitioner: String,
+    cores: String,
+    metric: String): Int = {
+    var res = Map[Int, Int]()
+    val files = listOfFilesEventLog(rootFolder)
+    for (file <- files) {
+      val eventLogFile = file
+      val meta = getMetainfoFromEventLogFile(file)
+      if (getString(meta, ".graph").toLowerCase().matches(graph) &&
+        getString(meta, ".version").toLowerCase().matches(version) &&
+        getString(meta, ".partitioner").toLowerCase().matches(partitioner) &&
+        getBigDecimal(meta, ".cores").toLowerCase().matches(cores)) {
+        println("work with " + file.getName())
+        val flatted = parseEventLogFile(eventLogFile)
+        val filtered = flatted.filter(x => x.get(metric).isDefined )
+        val mapped = filtered.map(getBigDecimal(_, metric).toInt)
+        					 .filter(_ > 1000)
+        
+        val map = mapped.groupBy(x => x)
+          .toList
+          .map(x => (x._1.toInt, x._2.length))
+        map.foreach(x => {
+          if(res.get(x._1).isDefined){
+            val v = res.get(x._1).get
+            res += (x._1 -> (x._2 + v))
+          }else{
+            res += x
+          } 
+        })
+      }
+    }
+    res.toList.map(_._2).reduce(_ + _ )
+  }
+  def cumulativeParsing(rootFolder: File,
+    graph: String,
+    version: String,
+    partitioner: String,
+    cores: String,
+    metric: String): List[(Int, Double)] = {
+    var res = Map[Int, Int]()
+    val files = listOfFilesEventLog(rootFolder)
+    for (file <- files) {
+      val eventLogFile = file
+      val meta = getMetainfoFromEventLogFile(file)
+      if (getString(meta, ".graph").toLowerCase().matches(graph) &&
+        getString(meta, ".version").toLowerCase().matches(version) &&
+        getString(meta, ".partitioner").toLowerCase().matches(partitioner) &&
+        getBigDecimal(meta, ".cores").toLowerCase().matches(cores)) {
+        println("work with " + file.getName())
+        val flatted = parseEventLogFile(eventLogFile)
+        val filtered = flatted.filter(x => x.get(metric).isDefined )
+        val mapped = filtered.map(getBigDecimal(_, metric).toInt)
+//        					 .filter(_ > 1000)
+        
+        val map = mapped.groupBy(x => x)
+          .toList
+          .map(x => (x._1.toInt, x._2.length))
+        map.foreach(x => {
+          if(res.get(x._1).isDefined){
+            val v = res.get(x._1).get
+            res += (x._1 -> (x._2 + v))
+          }else{
+            res += x
+          } 
+        })
+      }
+    }
+    cumulativeDistribution(res.toList.sortWith((a, b) => a._1 < b._1))
+  }
+
+  //  val s = fileParses(List[File]())
+  def fileParses(
+    fileParser: (File => List[Map[String, JsValue]]),
+    metadataFileParser: (File => Map[String, JsValue]),
+    listOfFile: (File => List[File]))(rootFolder: File,
+      graph: String = ".*",
+      version: String = ".*",
+      partitioner: String = ".*",
+      cores: String = ".*"): List[Map[String, JsValue]] = {
+    var res = List[Map[String, JsValue]]()
+    val files = listOfFile(rootFolder)
+    for (file <- files) {
+      val eventLogFile = file
+      val meta = metadataFileParser(file)
+      if (getString(meta, ".graph").toLowerCase().matches(graph) &&
+        getString(meta, ".version").toLowerCase().matches(version) &&
+        getString(meta, ".partitioner").toLowerCase().matches(partitioner) &&
+        getBigDecimal(meta, ".cores").toLowerCase().matches(cores)) {
+        val flatted = fileParser(eventLogFile).map(_ ++ meta)
+        println(file.getName() + " added")
+        res ++= flatted
+
+      }
+
+    }
+    res
+  }
+  /**
+   *   "-partitionandpagerank-twitter_1.txt-edgepartition1d-7-cores-1434447778082"
+   * pagerank - algorithm
+   * twitter - graph
+   * 1 - version
+   * edgepartition1d - partitioner
+   * 7 - cores
+   */
+
+  def getMetainfoFromEventLogFile(file: File): Map[String, JsValue] = {
+    val parentFolderName = file.getParentFile().getName()
+    println("parentFolderName = " + parentFolderName)
+    val splitted = parentFolderName.split("-")
+    println(splitted(1))
+    val algorithm = splitted(1).substring("partitionand".length)
+    val subsplitted = splitted(2).split("_")
+    val graph = subsplitted(0)
+    val version = subsplitted(1).replaceAll("[^\\d]", "")
+    val partitioner = splitted(3)
+    val cores = splitted(4)
+
+    var res = Map[String, JsValue]()
+    res += (".algorithm" -> JsString(algorithm))
+    res += (".graph" -> JsString(graph))
+    res += (".version" -> JsString(version))
+    res += (".partitioner" -> JsString(partitioner))
+    res += (".cores" -> JsNumber(cores))
+    res
+  }
+
+  def parseEventLogFile(file: File): List[Map[String, JsValue]] = {
+    Source.fromFile(file)
+      .getLines()
+      .map(_.parseJson)
+      .map(jsflatter(_))
+      .toList
+  }
+
+  /**
+   *   "/twitter_1/edgepartition1d/7.json"
+   * twitter - graph
+   * 1 - version
+   * edgepartition1d - partitioner
+   * 7 - cores
+   */
+
+  def getMetainfoFromJsonMetricFile(file: File): Map[String, JsValue] = {
+
+    val parentFolder = file.getParentFile()
+
+    val parentParentFolder = parentFolder.getParentFile()
+
+    val splitted = parentParentFolder.getName().split("_")
+
+    val graph = splitted(0)
+    val version = splitted(1)
+    val partitioner = parentFolder.getName()
+    val cores = file.getName().split(".")(0)
+
+    var res = Map[String, JsValue]()
+    res += (".graph" -> JsString(graph))
+    res += (".version" -> JsString(version))
+    res += (".partitioner" -> JsString(partitioner))
+    res += (".cores" -> JsNumber(cores))
+    res
+  }
+
+  def parseJsonMetricFile(file: File): List[Map[String, JsValue]] = {
+    List(jsflatter(Source.fromFile(file).mkString.parseJson))
+  }
+
+  def listFiles(folder: File): List[File] = {
+    require(folder.isDirectory())
+
+    var res = List[File]()
+    for (f <- folder.listFiles()) {
+      if (f.isFile()) {
+        res :+= f
+      } else {
+        res ++= listFiles(f)
+      }
+    }
+    res
+  }
+
+  def listOfFilesEventLog(folder: File): List[File] = {
+    var res = List[File]()
+    val eventLogFolder = new File(folder.getAbsolutePath() + "/eventLog")
+    println(folder.getAbsolutePath() + "/eventLog")
+    require(eventLogFolder.isDirectory())
+
+    for (file <- listFiles(eventLogFolder) if file.getName() == "EVENT_LOG_1") {
+      require(file.isFile())
+
+      res :+= file
+    }
+
+    res
+  }
+
+  def listOfFilesJsonMetricFile(folder: File): List[File] = {
+    var res = List[File]()
+
+    require(folder.isDirectory())
+
+    for (
+      subFolder <- folder.listFiles() if subFolder.isDirectory() &&
+        subFolder.getName().indexOf("_") != -1
+    ) {
+      require(subFolder.isDirectory())
+
+      for (
+        file <- listFiles(subFolder) if file.getName().indexOf("json") != -1
+      ) {
+        res :+= file
+      }
+
+    }
+
+    res
   }
 
   def main(args: Array[String]) {
@@ -63,6 +294,7 @@ object MetricsBuilder {
         line :+= partitionNumber.toString
 
         def addMetric(metricName: String): Unit = {
+          addMetaMetric(metricName)
           val h = List[String]("min", "min99%", "average", "max99%", "max")
           h.map(x => s"$metricName.$x").foreach(xx => addHeader(xx))
           line ++= stats(getValuesForMetric(parsed, metricName)).map(_.toInt.toString)
@@ -110,6 +342,7 @@ object MetricsBuilder {
         addHeader("Latency.average")
         addHeader("Latency.max99%")
         addHeader("Latency.max")
+        addMetaMetric("Latency")
         line ++= stats(waiting).map(_.toInt.toString)
         val stagesCompleted = totalFlatted.filter(getString(_, ".Event") == "SparkListenerStageCompleted")
 
@@ -125,6 +358,7 @@ object MetricsBuilder {
         addHeader("Stage duration.average")
         addHeader("Stage duration.max99%")
         addHeader("Stage duration.max")
+        addMetaMetric("Stage duration")
         line ++= stats(stagesDurationTrue).map(_.toInt.toString)
         result :+= line.mkString(", ")
       }
@@ -133,10 +367,91 @@ object MetricsBuilder {
       val out = new PrintWriter(new FileWriter(resultPath + partitioner + ".csv"));
       out.print(content)
       out.close
+      for (m <- metrics) {
+        val a = m + "average"
+        //        println("a =" + a)
+        val index = headers.indexOf(a)
+        //        println("index =" + index)
+        createPdf(m, resultPath + m + ".pdf", resultPath + partitioner + ".csv", index)
+        //        createPdf(".Task Metrics.Executor Run Time", resultPath + "TaskMetricsExecutorRunTime.pdf", resultPath + partitioner + ".csv",
+        //          10)
+      }
     }
 
   }
 
+  def createPdf(
+    title: String,
+    outputFileName: String,
+    dataFileName: String,
+    averageColumnIndex: Int,
+    whatDoWeDraw: String = "Tasks",
+    ylabel: String = "Time (ms)",
+    xlabel: String = "Partition/core number"): Unit = {
+    val script = getGnuplotScriptForCandlestick(title, outputFileName, dataFileName, averageColumnIndex, whatDoWeDraw, ylabel, xlabel)
+    createExecuteAndRemoveGnuplotScript(script, outputFileName + "gnu")
+  }
+
+  def createExecuteAndRemoveGnuplotScript(script: String, path: String): Unit = {
+    val out = new PrintWriter(new FileWriter(path));
+    out.print(script)
+    out.close
+
+    import scala.sys.process._
+    val comm = s"gnuplot $path"
+    println("comm = " + comm)
+    comm.!
+
+    val f = new File(path)
+    if (f.isFile) f.delete
+
+  }
+
+  def getGnuplotScriptForCandlestickOnlyConfidenceInterval(
+    title: String,
+    outputFileName: String,
+    dataFileName: String,
+    averageColumnIndex: Int,
+    whatDoWeDraw: String = "Tasks",
+    ylabel: String = "Time (ms)",
+    xlabel: String = "Partition/core number"): String = {
+    val opened = averageColumnIndex - 1
+    val min = averageColumnIndex - 2
+    val max = averageColumnIndex + 2
+    val closed = averageColumnIndex + 1
+
+    val template = s"""|set style fill transparent solid 0.85
+				       |set term pdf 
+				       |set title "$title"
+				  	   |set xlabel "$xlabel"
+				  	   |set ylabel "$ylabel"
+				  	   |set output "$outputFileName"
+				       |plot  '$dataFileName' using 1:$opened:$opened:$closed:$closed lw 0.5 with candlesticks title 'Stages'""".stripMargin
+    template
+  }
+
+  def getGnuplotScriptForCandlestick(
+    title: String,
+    outputFileName: String,
+    dataFileName: String,
+    averageColumnIndex: Int,
+    whatDoWeDraw: String = "Tasks",
+    ylabel: String = "Time (ms)",
+    xlabel: String = "Partition/core number"): String = {
+    val opened = averageColumnIndex - 1
+    val min = averageColumnIndex - 2
+    val max = averageColumnIndex + 2
+    val closed = averageColumnIndex + 1
+
+    val template = s"""|set style fill transparent solid 0.85
+				       |set term pdf 
+				       |set title "$title"
+				  	   |set xlabel "$xlabel"
+				  	   |set ylabel "$ylabel"
+				  	   |set output "$outputFileName"
+				       |plot  '$dataFileName' using 1:$opened:$min:$max:$closed lw 0.5 with candlesticks title 'Stages'""".stripMargin
+    template
+  }
   def getTasks(map: Map[String, spray.json.JsValue]): Boolean = {
     getString(map, ".Event") == "SparkListenerTaskEnd"
   }
@@ -162,7 +477,8 @@ object MetricsBuilder {
 
   def stats(data: List[BigDecimal]): List[BigDecimal] = {
     if (!data.isEmpty) {
-      val average = BigDecimal(data.sum.intValue / data.length)
+      data.map(_ / data.length)
+      val average = BigDecimal(data.map(_ / data.length).sum)
       val max = data.max
       val min = data.min
       // confidence level 90% 	95% 	99%

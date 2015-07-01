@@ -12,9 +12,9 @@ object PartAndConCompDisk  {
 
   def main(args: Array[String]) {
 
-    require(args.length == 5, """|Wrong argument number.
-                                 |Should be 5. Usage: <pathToGrpah> <partiotionerName> 
-                                 |<filenameWithResult> <minEdgePartitions> <numberOfCores>""".stripMargin)
+//    require(args.length == 5, """|Wrong argument number.
+//                                 |Should be 5. Usage: <pathToGrpah> <partiotionerName> 
+//                                 |<filenameWithResult> <minEdgePartitions> <numberOfCores>""".stripMargin)
 
     val pathToGrpah = args(0)
     val partitionerName = args(1)
@@ -31,7 +31,7 @@ object PartAndConCompDisk  {
     val sc = new SparkContext(new SparkConf()
       .setSparkHome(System.getenv("SPARK_HOME"))
       .setAppName(s" PartitionAndConnectedCommunity $nameOfGraph $partitionerName $numberOfCores cores")
-      .set("spark.cores.max", numberOfCores)
+//      .set("spark.cores.max", numberOfCores)
       .setJars(SparkContext.jarOfClass(this.getClass).toList))
     val t = System.currentTimeMillis()
     out.println("Context created " + (t - startTime) + " ms")

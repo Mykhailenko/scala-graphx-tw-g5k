@@ -36,6 +36,30 @@ object EventLogParser {
     }
 
   }
+  
+  def buildDistribution(
+      parsed: List[Map[String, JsValue]], 
+      metricName : String) : List[(Int, Int)] = {
+    parsed.filter(_.get(metricName).isDefined)
+          .map(getBigDecimal(_, metricName, 0))
+          .groupBy(x => x)
+          .toList
+          .map(x => (x._1.toInt, x._2.length))
+          .sortWith((a,b) => a._1 < b._1)
+  }
+  
+  def cumulativeDistribution(vals  : List[(Int, Int)] ) : List[(Int, Double)] = {
+    val total = vals.map(_._2).sum.toDouble
+    var prev = 0
+    val cum = for(i <- 0 until vals.length) yield {
+      val v = vals(i)
+      val r = (v._1, (v._2 + prev).toDouble)
+      prev += v._2
+      r
+    }
+    cum.toList.map(x => (x._1, x._2 / total))
+  }
+  
   def workWithDirectory(path: String) {
     var rootPath = path
     if (rootPath.charAt(rootPath.length() - 1) != '/') {
@@ -69,6 +93,13 @@ object EventLogParser {
     val newpath =  eventLogFile.getAbsolutePath() + "ALL.csv"
     println(s"saving to $newpath")
     createFile(newpath, createContentOfCSVFile(rawdata))
+    
+    
+    val distributionDeserializeTime = buildDistribution(parsed, ".Task Metrics.Executor Deserialize Time")
+    val cumul = cumulativeDistribution(distributionDeserializeTime)
+    val contentDeserializeTime  = cumul.map(x => x._1.toString + ", " + x._2.toString).mkString("\n")
+    createFile(eventLogFile.getAbsolutePath() + "distribution", contentDeserializeTime)
+    
 //    createFile(eventLogFile.getAbsolutePath() + ".csv", createContentOfCSVFile(parsed))
 //    createFile(eventLogFile.getAbsolutePath() + "Stages.csv", createContentOfCSVFile(stagesOnly))
 

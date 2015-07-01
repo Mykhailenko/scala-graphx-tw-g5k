@@ -15,52 +15,54 @@ import java.util.Random
 
 object PartitionAndConnectedCommunity {
 
-  def main(args: Array[String]) {
+    def main(args: Array[String]) {
 
-    require(args.length == 5, """|Wrong argument number.
-                                 |Should be 5. Usage: <pathToGrpah> <partiotionerName> 
+        require(args.length == 5, """|Wrong argument number.
+                                 |Should be 5. Usage: <pathToGrpah> <partiotionerName>
                                  |<filenameWithResult> <minEdgePartitions> <numberOfCores>""".stripMargin)
 
-    val pathToGrpah = args(0)
-    val partitionerName = args(1)
-    val filenameWithResult = args(2)
-    val minEdgePartitions = args(3).toInt
-    val numberOfCores = args(4)
+        val pathToGrpah = args(0)
+        val partitionerName = args(1)
+        val filenameWithResult = args(2)
+        val minEdgePartitions = args(3).toInt
+        val numberOfCores = args(4)
 
-    val nameOfGraph = pathToGrpah.substring(pathToGrpah.lastIndexOf("/") + 1)
+        val nameOfGraph = pathToGrpah.substring(pathToGrpah.lastIndexOf("/") + 1)
 
-    val sc = new SparkContext(new SparkConf()
-      .setSparkHome(System.getenv("SPARK_HOME"))
-      .setAppName(s" PartitionAndConnectedCommunity $nameOfGraph $partitionerName $numberOfCores cores")
-      .set("spark.cores.max", numberOfCores)
-      .set("spark.executor.id", "ramambahararambaru")
-      .setJars(SparkContext.jarOfClass(this.getClass).toList))
+        val sc = new SparkContext(new SparkConf()
+            .setSparkHome(System.getenv("SPARK_HOME"))
+            .setAppName(s" PartitionAndConnectedCommunity $nameOfGraph $partitionerName $minEdgePartitions partitions $numberOfCores cores")
+            .set("spark.cores.max", numberOfCores)
+            .set("spark.executor.id", "ramambahararambaru")
+            .setJars(SparkContext.jarOfClass(this.getClass).toList))
 
-    var graph: Graph[Int, Int] = null
-    var conCom: VertexRDD[VertexId] = null
+        // System.setProperty("spark.executor.memory", "1g")
 
-    JsonLogger(sc, filenameWithResult, "") { logger =>
-      import logger._
+        var graph: Graph[Int, Int] = null
+        var conCom: VertexRDD[VertexId] = null
 
-      logGraphLoading {
-        graph = GraphLoader.edgeListFile(sc, pathToGrpah, false, edgeStorageLevel = StorageLevel.MEMORY_AND_DISK,
-          vertexStorageLevel = StorageLevel.MEMORY_AND_DISK, minEdgePartitions = minEdgePartitions)
-      }
+        JsonLogger(sc, filenameWithResult, "") { logger =>
+            import logger._
 
-      logPartitioning {
-        graph = graph.partitionBy(PartitionStrategy.fromString(partitionerName))
-        // just to make sure that partition really did
-        graph.edges.count
-      }
-      logCalculationAfterPartitioning(graph)
-      logAlgorithExecution {
-        conCom = graph.connectedComponents.vertices
-        conCom.count
-      }
-      logResultSaving{
-        conCom.coalesce(1, true).saveAsTextFile(args(2) + ".conCom")
-      }
+            logGraphLoading {
+                graph = GraphLoader.edgeListFile(sc, pathToGrpah, false, edgeStorageLevel = StorageLevel.MEMORY_AND_DISK,
+                    vertexStorageLevel = StorageLevel.MEMORY_AND_DISK, minEdgePartitions = minEdgePartitions)
+            }
 
+            logPartitioning {
+                graph = graph.partitionBy(PartitionStrategy.fromString(partitionerName))
+                // just to make sure that partition really did
+                graph.edges.count
+            }
+            logCalculationAfterPartitioning(graph)
+            logAlgorithExecution {
+                conCom = graph.connectedComponents.vertices
+                conCom.count
+            }
+            logResultSaving {
+                conCom.coalesce(1, true).saveAsTextFile(args(2) + ".conCom")
+            }
+
+        }
     }
-  }
 }

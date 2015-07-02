@@ -9,7 +9,8 @@ var stageIndexMapping = {};
 
 var parsedStages;
 var parsedTasks;
-
+//the time of the first event
+var minTime;
 
 function darkTheme() {
     Highcharts.createElement('link', {
@@ -242,8 +243,8 @@ function parseLog(text) {
     buildJobInfo();
     var cs = getCompletedStages();
     var ct = getCompletedTasks();
-
     linkCompletedTasksToStages();
+
     var sw = getShuffleWrite();
     var tSE = getTasksStartEnd();
     var bp = getBoxPlotData();
@@ -253,9 +254,11 @@ function parseLog(text) {
     loadStageGraph('#shuffleWrite', [sw], 'ShuffleWrite Size', 'Stage', 'Byte', formatter)
     loadStageGraph('#tasksTime', [tSE], ' Task startTime endTime ', 'Task ID', 'Time (ms)', formatter, false)
     loadStageGraph('#boxplot', [bp], ' Task Execution Time per Stage ', 'Stage ID', 'Time (ms)', formatter, false)
-     loadStageGraph('#pieStage', [gs], ' Stage Execution Time ', 'Host', 'Time (ms)', null, false)
+    loadStageGraph('#pieStage', [gs], ' Stage Execution Time ', 'Host', 'Time (ms)', null, false)
 
     loadStageGraph('#pieHost', [gt], ' Task Execution Time per Host ', 'Host', 'Time (ms)', null, false)
+
+    buildTable();
 
 
 };
@@ -265,16 +268,16 @@ function buildJobInfo() {
     var sparkProperties = jobInfo["Spark Properties"];
     var timeStart = new Date(filterEvent(allEvents, "SparkListenerApplicationStart")[0]["Timestamp"]);
     var info = {
-      jar :  sparkProperties["spark.jars"],
-      app :  sparkProperties["spark.app.name"],
-      driver : sparkProperties["spark.driver.host"],
-      master : sparkProperties["spark.master"],
-      driverMemory : sparkProperties["spark.driver.memory"],
-      executorMemory : sparkProperties["spark.executor.memory"],
+        jar: sparkProperties["spark.jars"],
+        app: sparkProperties["spark.app.name"],
+        driver: sparkProperties["spark.driver.host"],
+        master: sparkProperties["spark.master"],
+        driverMemory: sparkProperties["spark.driver.memory"],
+        executorMemory: sparkProperties["spark.executor.memory"],
     }
     var s = "";
-  //  s+="<summary> Job Details </summary>";
-  //  s+="<ul>";
+    //  s+="<summary> Job Details </summary>";
+    //  s+="<ul>";
     // s+="<li> Started on " + timeStart + "</li>";
     // s+="<li> Jar : " +  info.jar + "</li>";
     // s+="<li> App : "  + info.app  + "</li>";
@@ -283,13 +286,13 @@ function buildJobInfo() {
     // s+="<li> Driver Memory " + info.driverMemory  + "</li>";
     // s+="<li> Executor Memory " + info.executorMemory  + "</li>";
     //s+="</ul></details>";
-    s+="<b> Started on </b>" + timeStart + "<br>";
-    s+="<b> Jar </b>" +  info.jar + "<br>";
-    s+="<b> App </b>"  + info.app  + "<br>";
-    s+="<b> Driver </b>" + info.driver + "<br>";
-    s+="<b> Master </b>" + info.master + "<br>";
-    s+="<b> Driver Memory </b>" + info.driverMemory  + "<br>";
-    s+="<b> Executor Memory </b>" + info.executorMemory  + "<br>";
+    s += "<b> Started on </b>" + timeStart + "<br>";
+    s += "<b> Jar </b>" + info.jar + "<br>";
+    s += "<b> App </b>" + info.app + "<br>";
+    s += "<b> Driver </b>" + info.driver + "<br>";
+    s += "<b> Master </b>" + info.master + "<br>";
+    s += "<b> Driver Memory </b>" + info.driverMemory + "<br>";
+    s += "<b> Executor Memory </b>" + info.executorMemory + "<br>";
 
 
     $('#jobInfo').html(s);
@@ -306,6 +309,8 @@ function getCompletedStages() {
             x: index,
             y: info["Completion Time"] - info["Submission Time"],
             stage: {
+                submissionTime : info["Submission Time"],
+                completionTime : info["Completion Time"],
                 duration: info["Completion Time"] - info["Submission Time"],
                 stageID: info["Stage ID"],
                 numTasks: info["Number of Tasks"],
@@ -331,6 +336,14 @@ function getCompletedTasks() {
         var metrics = x["Task Metrics"]
             //can be undefined for some tasks
         var input = metrics["Input Metrics"]
+        var updatedBlocks = metrics["Updated Blocks"]
+        var blockMemory;
+        if (updatedBlocks != undefined) {
+            blockMemory = [];
+            for (var i = 0; i < updatedBlocks.length; i++) {
+                blockMemory.push(updatedBlocks[i]["Status"]["Memory Size"])
+            }
+        }
         var shuffleWrite = metrics["Shuffle Write Metrics"]
         var shuffleRead = metrics["Shuffle Read Metrics"]
             // console.log(info)
@@ -341,7 +354,7 @@ function getCompletedTasks() {
             x: stageIndexMapping[x["Stage ID"]],
             y: info["Finish Time"] - info["Launch Time"],
             task: {
-                realID: info["Task ID"],
+                taskID: info["Task ID"],
                 stageID: x["Stage ID"],
                 host: info["Host"],
                 launchTime: info["Launch Time"],
@@ -358,6 +371,7 @@ function getCompletedTasks() {
                 shuffleReadLocalBlocks: shuffleRead == undefined ? undefined : shuffleRead["Local Blocks Fetched"],
                 shuffleReadFetchWait: shuffleRead == undefined ? undefined : shuffleRead["Fetch Wait Time"],
                 shuffleReadRemoteBytes: shuffleRead == undefined ? undefined : shuffleRead["Remote Bytes Read"],
+                blockMemory: blockMemory,
             }
         }
     });
@@ -393,7 +407,7 @@ function getTasksStartEnd() {
     taskStartEnd = parsedTasks.map(function(elem, index) {
         return {
             ctype: "task",
-            x: elem.task.realID,
+            x: elem.task.taskID,
             low: elem.task.launchTime,
             high: elem.task.finishTime,
             task: elem.task
@@ -405,10 +419,10 @@ function getTasksStartEnd() {
     }
     taskStartEnd.sort(compare);
     //now that it is sorted, substract the start time of the first
-    var min = taskStartEnd[0].low;
+    minTime = taskStartEnd[0].low;
     taskStartEnd.map(function(elem) {
-        elem.low -= min;
-        elem.high -= min;
+        elem.low -= minTime;
+        elem.high -= minTime;
     });
 
 
@@ -483,9 +497,9 @@ function getTasksTimePerHost() {
 }
 //For pie Drawing
 function getStagesTime() {
-   var stageTime = {}
-   var total = 0;
-   for (var i = 0; i < parsedStages.length; i++) {
+    var stageTime = {}
+    var total = 0;
+    for (var i = 0; i < parsedStages.length; i++) {
         var elem = parsedStages[i];
         if (stageTime[elem.stage.stageID] == undefined) {
             stageTime[elem.stage.stageID] = 0;
@@ -504,22 +518,7 @@ function getStagesTime() {
             name: index + " (" + f + " %)",
             y: stageTime[index]
         });
-        //  console.log(index);
-        // console.log(obj[index]);
     }
-
-
-    // for (var i = 0; i < stageTime.length; i++) {
-    //     var f = Math.round(stageTime[i] * 100.0 / total, 2);
-    //     data.push({
-    //         name: i + " (" + f + " %)",
-    //         y: stageTime[i]
-    //     });
-    //     //  console.log(index);
-    //     // console.log(obj[index]);
-    // }
-
-
     return {
         type: "pie",
         name: "Time per stage",
@@ -528,10 +527,48 @@ function getStagesTime() {
     }
 }
 
+function buildTable() {
+    var s = "<thead> <tr> " +
+    "<th class=\"text-center sort-default\" style=\"width:10%\">Stage</th> " +
+    "<th class=\"text-center col-sm-2\">Task</th>" +
+    "<th class=\"text-center col-sm-2\">Host</th>"+
+    "<th class=\"text-center col-sm-2\">Runtime</th>"+
+    "<th class=\"text-center col-sm-2\">Launch Time</th>"+
+    "<th class=\"text-center col-sm-2\">Finish Time</th>"+
+    " </tr> </thead> "
+    s+="<tbody>"
+
+    var template = "{{#d}}<tr> {{#task}}" +
+        "<td> {{stageID}}</td> " +
+        "<td> {{taskID}}</td> " +
+        "<td> {{host}}</td> " +
+        "<td> {{runTime}}</td> " +
+        "<td> {{logicTime launchTime}}</td> " +
+        "<td> {{logicTime finishTime}}</td> " +
+        "{{/task}}</tr>{{/d}}"
+
+    // s += Mustache.render(template, {
+    //     d: parsedTasks
+    // });
+//handler to shift time
+Handlebars.registerHelper("logicTime", function(time) {
+ return ""+ time-minTime;
+});
+
+var han = Handlebars.compile(template);
+s+=han({d:parsedTasks});
+
+     s+="</tbody>"
+
+    $("#detailedTable").html(s);
+        new Tablesort(document.getElementById('detailedTable'));
+
+    return s;
+}
 
 function linkCompletedTasksToStages() {
     for (var i = 0; i < parsedTasks.length; i++) {
-        var tID = parsedTasks[i].task.realID;
+        var tID = parsedTasks[i].task.taskID;
         var tTime = parsedTasks[i].task.duration;
         var sID = parsedTasks[i].task.stageID;
         var index = stageIndexMapping[sID];
@@ -649,7 +686,7 @@ function formatter() {
 }
 
 function stageFormatter(th) {
-    //console.log(this.point.realID)
+    //console.log(this.point.taskID)
     // console.log(this.y)
     s = '<b>Stage : ' + th.point.stage.stageID + '</b>';
     s += '<br> Num Tasks : ' + th.point.stage.numTasks;
@@ -660,9 +697,9 @@ function stageFormatter(th) {
 
 
 function taskFormatter(th) {
-    //console.log(this.point.realID)
+    //console.log(this.point.taskID)
     // console.log(this.y)
-    s = '<b>Task : ' + th.point.task.realID + '</b>';
+    s = '<b>Task : ' + th.point.task.taskID + '</b>';
     s += '<br> Stage ID : ' + th.point.task.stageID;
     s += '<br> Host : ' + th.point.task.host;
     s += '<br> Duration : ' + th.point.y + ' ms';
@@ -678,7 +715,7 @@ function taskFormatter(th) {
 function details(point) {
     if (point.ctype == 'task') {
         var elem = point.task;
-        s = '<b>Task : ' + elem.realID + '</b>';
+        s = '<b>Task : ' + elem.taskID + '</b>';
         s += '<br> Stage ID : ' + elem.stageID;
         s += '<br> Host : ' + elem.host;
         s += '<br> Duration : ' + elem.duration + ' ms';

@@ -7,27 +7,62 @@
 
 <script src="javascript/jquery.min.js"></script>
 <script src="javascript/highcharts.js"></script>
-<script src="http://code.highcharts.com/highcharts-more.js"></script>
+<script src="javascript/highcharts-more.js"></script>
 <script src="javascript/parseLog.js"></script>
 <script src="javascript/stats.js"></script>
 <script src="javascript/bootstrap.min.js"></script>
+<script src="javascript/handlebars-v3.0.3.js"></script>
+<script src="javascript/tablesort.min.js"></script>
+<script src='javascript/tablesort.numeric.js'></script>
+<style>
+th.sort-header::-moz-selection { background:transparent; }
+th.sort-header::selection      { background:transparent; }
+th.sort-header {
+  cursor:pointer;
+  }
+th.sort-header::-moz-selection,
+th.sort-header::selection {
+  background:transparent;
+  }
+table th.sort-header:after {
+  content:'';
+  float:right;
+  margin-top:7px;
+  border-width:0 4px 4px;
+  border-style:solid;
+  border-color:#404040 transparent;
+  visibility:hidden;
+  }
+table th.sort-header:hover:after {
+  visibility:visible;
+  }
+table th.sort-up:after,
+table th.sort-down:after,
+table th.sort-down:hover:after {
+  visibility:visible;
+  opacity:0.8;
+  }
+table th.sort-up:after {
+  border-bottom:none;
+  border-width:4px 4px 0;
+  }
+th {
+    background-color: #CCE6FF;
+    color: black;
+}
 
-
+</style>
 </head>
+
 <body>
-<!--   <div id="chart">
-    <svg style="height:500px"></svg>
-  </div> -->
 <div>
     <ul id="tabs" class="nav nav-tabs">
-        <li class="active" ><a href="#job">Job</a>
-        </li>
-        <li><a href="#charts">Stages/Tasks</a>
-        </li>
+        <li class="active" ><a href="#job">Job</a></li>
+        <li><a href="#charts">Stages/Tasks</a></li>
+        <li><a href="#table">Details</a></li>
     </ul>
 </div>
-
- <div id="my-tab-content" class="tab-content">
+ <div id="content" class="tab-content">
     <div class="tab-pane active" id="job">
         <div id="jobInfo" style=" margin-left : 10px;"></div>
         <div style="float:left">
@@ -41,19 +76,15 @@
       <div id="shuffleWrite" style="width:85%; height:500px; float:left"></div>
       <div id="tasksTime" style="width:85%; height:500px; float:left"></div>
       <div id="boxplot" style="width:85%; height:500px; float:left"></div>
-
     </div>
-
+   <div class="tab-pane" id="table" style="width:90%;  margin: 0 auto;">
+       <div> <table class="table table-condensed table-striped table-responsive text-center table-hover" id="detailedTable">  </table> </div>
+   </div>
 </div>
 
   <script>
-   // darkTheme();
      $.get("EVENT_LOG_1", parseLog);
-    //   jQuery(document).ready(function ($) {
-    //     $('#tabs').tab();
-    // });
     $('#tabs a').click(function (e) {
-    //  e.preventDefault()
       $(this).tab('show')
     })
 </script>

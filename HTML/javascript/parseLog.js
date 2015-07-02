@@ -254,7 +254,7 @@ function parseLog(text) {
     loadStageGraph('#shuffleWrite', [sw], 'ShuffleWrite Size', 'Stage', 'Byte', formatter)
     loadStageGraph('#tasksTime', [tSE], ' Task startTime endTime ', 'Task ID', 'Time (ms)', formatter, false)
     loadStageGraph('#boxplot', [bp], ' Task Execution Time per Stage ', 'Stage ID', 'Time (ms)', formatter, false)
-    loadStageGraph('#pieStage', [gs], ' Stage Execution Time ', 'Host', 'Time (ms)', null, false)
+    loadStageGraph('#pieStage', [gs], ' Stage Execution Time ', 'Host', 'Time (ms)', pieStageFormatter, false)
 
     loadStageGraph('#pieHost', [gt], ' Task Execution Time per Host ', 'Host', 'Time (ms)', null, false)
 
@@ -309,8 +309,9 @@ function getCompletedStages() {
             x: index,
             y: info["Completion Time"] - info["Submission Time"],
             stage: {
-                submissionTime : info["Submission Time"],
-                completionTime : info["Completion Time"],
+                stageName : info["Stage Name"],
+                submissionTime: info["Submission Time"],
+                completionTime: info["Completion Time"],
                 duration: info["Completion Time"] - info["Submission Time"],
                 stageID: info["Stage ID"],
                 numTasks: info["Number of Tasks"],
@@ -356,6 +357,7 @@ function getCompletedTasks() {
             task: {
                 taskID: info["Task ID"],
                 stageID: x["Stage ID"],
+                taskType : x["Task Type"],
                 host: info["Host"],
                 launchTime: info["Launch Time"],
                 finishTime: info["Finish Time"],
@@ -502,9 +504,9 @@ function getStagesTime() {
     for (var i = 0; i < parsedStages.length; i++) {
         var elem = parsedStages[i];
         if (stageTime[elem.stage.stageID] == undefined) {
-            stageTime[elem.stage.stageID] = 0;
+            stageTime[elem.stage.stageID] = {};
         }
-        stageTime[elem.stage.stageID] = elem.stage.duration;
+        stageTime[elem.stage.stageID] = { stage : elem.stage, duration : elem.stage.duration};
         total += elem.stage.duration;
     }
 
@@ -513,10 +515,12 @@ function getStagesTime() {
         if (!stageTime.hasOwnProperty(index)) {
             continue;
         }
-        var f = Math.round(stageTime[index] * 100.0 / total, 2);
+        var f = Math.round(stageTime[index].duration * 100.0 / total, 2);
         data.push({
             name: index + " (" + f + " %)",
-            y: stageTime[index]
+            y: stageTime[index].duration,
+            stage : stageTime[index].stage,
+
         });
     }
     return {
@@ -529,39 +533,41 @@ function getStagesTime() {
 
 function buildTable() {
     var s = "<thead> <tr> " +
-    "<th class=\"text-center sort-default\" style=\"width:10%\">Stage</th> " +
-    "<th class=\"text-center col-sm-2\">Task</th>" +
-    "<th class=\"text-center col-sm-2\">Host</th>"+
-    "<th class=\"text-center col-sm-2\">Runtime</th>"+
-    "<th class=\"text-center col-sm-2\">Launch Time</th>"+
-    "<th class=\"text-center col-sm-2\">Finish Time</th>"+
-    " </tr> </thead> "
-    s+="<tbody>"
+        "<th class=\"text-center sort-default col-sm-1\">Stage</th> " +
+        "<th class=\"text-center col-sm-1\">Task</th>" +
+        "<th class=\"text-center col-sm-1\">Host</th>" +
+        "<th class=\"text-center col-sm-1\">Duration</th>" +
+        "<th class=\"text-center col-sm-1\">Launch Time</th>" +
+        "<th class=\"text-center col-sm-1\">Finish Time</th>" +
+        " </tr> </thead> "
+    s += "<tbody>"
 
-    var template = "{{#d}}<tr> {{#task}}" +
-        "<td> {{stageID}}</td> " +
-        "<td> {{taskID}}</td> " +
-        "<td> {{host}}</td> " +
-        "<td> {{runTime}}</td> " +
-        "<td> {{logicTime launchTime}}</td> " +
-        "<td> {{logicTime finishTime}}</td> " +
+    var template = "{{#d}}<tr>{{#task}}" +
+        "<td>{{stageID}}</td> " +
+        "<td>{{taskID}}</td> " +
+        "<td>{{host}}</td> " +
+        "<td>{{runTime}}</td> " +
+        "<td>{{logicTime launchTime}}</td> " +
+        "<td>{{logicTime finishTime}}</td> " +
         "{{/task}}</tr>{{/d}}"
 
     // s += Mustache.render(template, {
     //     d: parsedTasks
     // });
-//handler to shift time
-Handlebars.registerHelper("logicTime", function(time) {
- return ""+ time-minTime;
-});
+    //handler to shift time
+    Handlebars.registerHelper("logicTime", function(time) {
+        return "" + time - minTime;
+    });
 
-var han = Handlebars.compile(template);
-s+=han({d:parsedTasks});
+    var han = Handlebars.compile(template);
+    s += han({
+        d: parsedTasks
+    });
 
-     s+="</tbody>"
+    s += "</tbody>"
 
     $("#detailedTable").html(s);
-        new Tablesort(document.getElementById('detailedTable'));
+    new Tablesort(document.getElementById('detailedTable'));
 
     return s;
 }
@@ -688,7 +694,8 @@ function formatter() {
 function stageFormatter(th) {
     //console.log(this.point.taskID)
     // console.log(this.y)
-    s = '<b>Stage : ' + th.point.stage.stageID + '</b>';
+    var s = '<b>Stage : ' + th.point.stage.stageID + '</b>';
+    s += '<br> Name : ' + th.point.stage.stageName;
     s += '<br> Num Tasks : ' + th.point.stage.numTasks;
     s += '<br> Duration : ' + th.point.y + ' ms';
     s += '<br> Tasks  : ' + th.point.stage.taskList;
@@ -699,9 +706,10 @@ function stageFormatter(th) {
 function taskFormatter(th) {
     //console.log(this.point.taskID)
     // console.log(this.y)
-    s = '<b>Task : ' + th.point.task.taskID + '</b>';
+    var s = '<b>Task : ' + th.point.task.taskID + '</b>';
     s += '<br> Stage ID : ' + th.point.task.stageID;
     s += '<br> Host : ' + th.point.task.host;
+    s+= '<br> Type : ' + th.point.task.taskType;
     s += '<br> Duration : ' + th.point.y + ' ms';
     s += '<br> Deserialize : ' + th.point.task.deserializeTime + ' ms';
     s += '<br> Run time : ' + th.point.task.runTime + ' ms';
@@ -711,6 +719,15 @@ function taskFormatter(th) {
     }
     return s;
 }
+
+function pieStageFormatter() {
+    var s = '<b>' + this.point.options.stage.stageID + '</b>';
+    s+='<br> ' + this.point.options.stage.stageName;
+    s += '<br> Num Tasks : ' + this.point.options.stage.numTasks;
+    s += '<br> Duration : ' + this.point.options.stage.duration + ' ms';
+    return s;
+}
+
 
 function details(point) {
     if (point.ctype == 'task') {
@@ -754,4 +771,12 @@ function details(point) {
         s += '<br> Tasks  : ' + elem.taskList;
     }
     $("#details").empty().html(s);
+}
+
+
+function exportToCSV() {
+    var csv = $("#detailedTable").table2CSV({
+        delivery: 'value'
+    });
+    window.location.href = 'data:text/csv;charset=UTF-8,' + encodeURIComponent(csv);
 }

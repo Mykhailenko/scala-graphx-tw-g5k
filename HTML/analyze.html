@@ -16,7 +16,6 @@
 <script src='javascript/tablesort.numeric.js'></script>
 <script src='javascript/table2CSV.js'></script>
 
-
 <style>
 th.sort-header::-moz-selection { background:transparent; }
 th.sort-header::selection      { background:transparent; }
@@ -62,6 +61,7 @@ th {
     <ul id="tabs" class="nav nav-tabs">
         <li class="active" ><a href="#job">Job</a></li>
         <li><a href="#charts">Stages/Tasks</a></li>
+        <li><a href="#RDD">RDD</a></li>
         <li><a href="#table">Details</a></li>
     </ul>
 </div>
@@ -79,7 +79,19 @@ th {
       <div id="shuffleWrite" style="width:85%; height:500px; float:left"></div>
       <div id="tasksTime" style="width:85%; height:500px; float:left"></div>
       <div id="boxplot" style="width:85%; height:500px; float:left"></div>
+      <div id="tasksMemory" style="width:85%; height:500px; float:left"></div>
+
     </div>
+    <div class="tab-pane" id="RDD" style="margin: 0 auto;">
+         <div id="rddMemory" style="width:85%; height:500px; float:left"></div>
+         <div id="rddButton" style="margin: 5px; height:500px; width:10%; float:left">
+            <input type="radio" name="rddX" class="mychart" id= "rdd" value="rdd" onclick= "rddX()" checked>RDD
+            <input type="radio" name="rddX" class="mychart" id= "time" value="time" onclick= "rddX()">Time
+         </div>
+         <div id="timeMemory" style="width:85%; height:500px; float:left"></div>
+   </div>
+
+
    <div class="tab-pane" id="table" style="width:90%;  margin: 0 auto;">
       <button type='button' class='btn  btn-default btn-xs' onclick="exportToCSV()"> Export to CSV </button>
        <div> <table class="table table-condensed table-striped table-responsive text-center table-hover" id="detailedTable">  </table> </div>

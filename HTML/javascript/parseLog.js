@@ -320,35 +320,35 @@ function getJobInfo() {
 }
 
 
-function getCompletedStages() {
-    var stageCompleted = filterEvent(allEvents, "SparkListenerStageCompleted");
-    stages = stageCompleted.map(function(x, index) {
-        var info = x["Stage Info"]
-        stageIndexMapping[info["Stage ID"]] = index;
-        return {
-            ctype: 'stage',
-            x: index,
-            y: info["Completion Time"] - info["Submission Time"],
-            stage: {
-                stageName: info["Stage Name"],
-                submissionTime: info["Submission Time"],
-                completionTime: info["Completion Time"],
-                duration: info["Completion Time"] - info["Submission Time"],
-                stageID: info["Stage ID"],
-                numTasks: info["Number of Tasks"],
-                taskList: []
-            }
-        }
-    });
-    return {
-        type: "scatter",
-        name: "Stages",
-        // ctype: "stage",
-        id: 0,
-        color: 'rgba(223, 83, 83, .5)',
-        data: stages
-    }
-}
+// function getCompletedStages() {
+//     var stageCompleted = filterEvent(allEvents, "SparkListenerStageCompleted");
+//     stages = stageCompleted.map(function(x, index) {
+//         var info = x["Stage Info"]
+//         stageIndexMapping[info["Stage ID"]] = index;
+//         return {
+//             ctype: 'stage',
+//             x: index,
+//             y: info["Completion Time"] - info["Submission Time"],
+//             stage: {
+//                 stageName: info["Stage Name"],
+//                 submissionTime: info["Submission Time"],
+//                 completionTime: info["Completion Time"],
+//                 duration: info["Completion Time"] - info["Submission Time"],
+//                 stageID: info["Stage ID"],
+//                 numTasks: info["Number of Tasks"],
+//                 taskList: []
+//             }
+//         }
+//     });
+//     return {
+//         type: "scatter",
+//         name: "Stages",
+//         // ctype: "stage",
+//         id: 0,
+//         color: 'rgba(223, 83, 83, .5)',
+//         data: stages
+//     }
+// }
 
 function getCompletedStages2() {
     var stageCompleted = filterEvent(allEvents, "SparkListenerStageCompleted");

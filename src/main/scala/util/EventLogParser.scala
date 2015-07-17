@@ -70,6 +70,7 @@ object EventLogParser {
 
     val lines = Source.fromFile(eventLogFile).getLines().toList
 
+    
     val rawdata = lines.map(_.parseJson)
       .map(jsflatter(_))
 

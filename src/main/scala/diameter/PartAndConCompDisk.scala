@@ -20,7 +20,6 @@ object PartAndConCompDisk  {
     val partitionerName = args(1)
     val filenameWithResult = args(2)
     val minEdgePartitions = args(3).toInt
-    val numberOfCores = args(4)
 
     val out = new PrintWriter(new FileWriter(filenameWithResult));
     
@@ -30,8 +29,7 @@ object PartAndConCompDisk  {
 
     val sc = new SparkContext(new SparkConf()
       .setSparkHome(System.getenv("SPARK_HOME"))
-      .setAppName(s" PartitionAndConnectedCommunity $nameOfGraph $partitionerName $numberOfCores cores")
-//      .set("spark.cores.max", numberOfCores)
+      .setAppName(s" PartitionAndConnectedCommunity $nameOfGraph $partitionerName $minEdgePartitions cores")
       .setJars(SparkContext.jarOfClass(this.getClass).toList))
     val t = System.currentTimeMillis()
     out.println("Context created " + (t - startTime) + " ms")
@@ -39,15 +37,17 @@ object PartAndConCompDisk  {
 
     var graph: Graph[Int, Int] = null
     var conCom: VertexRDD[VertexId] = null
-    graph = GraphLoader.edgeListFile(sc, pathToGrpah, false, edgeStorageLevel = StorageLevel.MEMORY_AND_DISK,
-      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK, minEdgePartitions = minEdgePartitions)
-    graph.edges.count
+    graph = GraphLoader.edgeListFile(sc, pathToGrpah, false, 
+//        edgeStorageLevel = StorageLevel.MEMORY_AND_DISK,
+//      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK, 
+      minEdgePartitions = minEdgePartitions) //8 //0
+    graph.edges.count // 1
     val t0 = System.currentTimeMillis()
     out.println("Graph loaded for " + (t0 - t) + " ms")
     out.flush()
     
-    graph = graph.partitionBy(PartitionStrategy.fromString(partitionerName))
-    out.println("graph.edges.count = " + graph.edges.count)
+    graph = graph.partitionBy(PartitionStrategy.fromString(partitionerName)).persist() // 9 // 2 // 10
+    out.println("graph.edges.c ount = " + graph.edges.count) // 3
     val t1 = System.currentTimeMillis()
     out.println("Graph repartitioned " + (t1 - t0) + " ms")
     out.flush()

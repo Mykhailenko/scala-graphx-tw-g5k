@@ -5,10 +5,11 @@ var boxplotData;
 //Example : stageIndexMapping[50] = 1 if Stage 50 is the second in execution order
 var stageIndexMapping = {};
 
-var stages;
-var stages2 = {}
-var tasks;
-var tasks2 = {};
+var jobs = {}
+var stages = {}
+var tasks = {};
+
+
 var RDD;
 //the time of the first event
 var minTime = Infinity;
@@ -244,25 +245,31 @@ function parseLog(text) {
         }
     });
     getJobInfo();
- //  var cs = getCompletedStages();
-    getCompletedStages2();
-    getCompletedTasks2();
-    linkCompletedTasksToStages2();
-  //  debugger;
-//   var ct = getCompletedTasks();
-  // linkCompletedTasksToStages();
+    getJobs();
+    //  var cs = getCompletedStages();
+    getCompletedStages();
+    getCompletedTasks();
+    linkCompletedTasksToStages();
+    //  debugger;
+    //   var ct = getCompletedTasks();
+    // linkCompletedTasksToStages();
     getRDD();
 
-  //  var sw = getShuffleWrite();
+    //  var sw = getShuffleWrite();
+    var jTl = getJobTimeLine();
+
     var tSE = getTasksStartEnd();
     var bp = getBoxPlotData();
-    var gs = getStagesTime2();
+    var gs = getStagesTime();
     var gt = getTasksTimePerHost();
 
 
-    var stageSerie = buildScatterSerie(stages2, "stageIndex", "duration", "Stages", "stage", 'rgba(223, 83, 83, .5)');
-    var taskSerie = buildScatterSerie(tasks2, "stageIndex", "duration", "Tasks",  "task", 'rgba(68, 170, 213, 0.8)')
-    var shuffleWrittenSerie = buildScatterSerie(tasks2, "stageIndex", "shuffleWritten", "Tasks",  "task", 'rgba(68, 170, 213, 0.8)')
+
+    var stageSerie = buildScatterSerie(stages, "stageIndex", "duration", "Stages", "stage", 'rgba(223, 83, 83, .5)');
+    var taskSerie = buildScatterSerie(tasks, "stageIndex", "duration", "Tasks", "task", 'rgba(68, 170, 213, 0.8)')
+    var shuffleWrittenSerie = buildScatterSerie(tasks, "stageIndex", "shuffleWritten", "Tasks", "task", 'rgba(68, 170, 213, 0.8)')
+
+    loadStageGraph('#jobsStartEnd', [jTl], ' Jobs Timeline ', 'Task ID', 'Time (ms)', formatter, true)
 
     // loadStageGraph('#container', [cs, ct], 'Stages/Tasks Duration', 'Stage', 'Time (ms)', formatter)
     loadStageGraph('#container', [stageSerie, taskSerie], 'Stages/Tasks Duration', 'Stage', 'Time (ms)', formatter)
@@ -290,6 +297,7 @@ function getJobInfo() {
     var jobInfo = filterEvent(allEvents, "SparkListenerEnvironmentUpdate")[0];
     var sparkProperties = jobInfo["Spark Properties"];
     var timeStart = new Date(filterEvent(allEvents, "SparkListenerApplicationStart")[0]["Timestamp"]);
+    minTime = timeStart;
     var info = {
         jar: sparkProperties["spark.jars"],
         app: sparkProperties["spark.app.name"],
@@ -320,42 +328,30 @@ function getJobInfo() {
 }
 
 
-// function getCompletedStages() {
-//     var stageCompleted = filterEvent(allEvents, "SparkListenerStageCompleted");
-//     stages = stageCompleted.map(function(x, index) {
-//         var info = x["Stage Info"]
-//         stageIndexMapping[info["Stage ID"]] = index;
-//         return {
-//             ctype: 'stage',
-//             x: index,
-//             y: info["Completion Time"] - info["Submission Time"],
-//             stage: {
-//                 stageName: info["Stage Name"],
-//                 submissionTime: info["Submission Time"],
-//                 completionTime: info["Completion Time"],
-//                 duration: info["Completion Time"] - info["Submission Time"],
-//                 stageID: info["Stage ID"],
-//                 numTasks: info["Number of Tasks"],
-//                 taskList: []
-//             }
-//         }
-//     });
-//     return {
-//         type: "scatter",
-//         name: "Stages",
-//         // ctype: "stage",
-//         id: 0,
-//         color: 'rgba(223, 83, 83, .5)',
-//         data: stages
-//     }
-// }
+function getJobs() {
+     var jobsStart = filterEvent(allEvents, "SparkListenerJobStart");
+      for (var i = 0; i < jobsStart.length; i++) {
+              var job = jobsStart[i];
+              jobs[job["Job ID"]] ={
+                 jobID : job["Job ID"],
+                 submissionTime : job["Submission Time"],
+                 stageIDs : job["Stage IDs"]
+              }
+      }
+     var jobEnd = filterEvent(allEvents, "SparkListenerJobEnd");
+     for (var i = 0; i < jobEnd.length; i++) {
+         var job = jobEnd[i];
+         jobs[job["Job ID"]].completionTime = job["Completion Time"];
+         jobs[job["Job ID"]].result = job["Job Result"];
+    }
+}
 
-function getCompletedStages2() {
+function getCompletedStages() {
     var stageCompleted = filterEvent(allEvents, "SparkListenerStageCompleted");
     for (var i = 0; i < stageCompleted.length; i++) {
         var info = stageCompleted[i]["Stage Info"];
         stageIndexMapping[info["Stage ID"]] = i;
-        stages2[info["Stage ID"]] = {
+        stages[info["Stage ID"]] = {
             index: i,
             stageName: info["Stage Name"],
             submissionTime: info["Submission Time"],
@@ -370,19 +366,19 @@ function getCompletedStages2() {
 
 
 function buildScatterSerie(data, xField, yField, name, ctype, color) {
-     var series = []
-     for (var index in data) {
+    var series = []
+    for (var index in data) {
         if (!data.hasOwnProperty(index)) {
             continue;
         }
-       series.push({
-           x : data[index][xField],
-           y : data[index][yField],
-           ctype: ctype,
-           details : data[index]
-       });
+        series.push({
+            x: data[index][xField],
+            y: data[index][yField],
+            ctype: ctype,
+            details: data[index]
+        });
     }
-     return {
+    return {
         type: "scatter",
         name: name,
         id: 0,
@@ -393,92 +389,15 @@ function buildScatterSerie(data, xField, yField, name, ctype, color) {
 
 
 
-// function getCompletedTasks() {
-//     var taskCompleted = filterEvent(allEvents, "SparkListenerTaskEnd");
-//     tasks = taskCompleted.map(function(x, index) {
-//         var info = x["Task Info"]
-//         var metrics = x["Task Metrics"]
-//             //can be undefined for some tasks
-//         var input = metrics["Input Metrics"]
-//         var updatedBlocks = metrics["Updated Blocks"]
-//         var block;
-//         if (updatedBlocks != undefined) {
-//             block = [];
-//             for (var i = 0; i < updatedBlocks.length; i++) {
-//                 parsedName = updatedBlocks[i]["Block ID"].split("_");
-//                 block.push({
-//                     id: updatedBlocks[i]["Block ID"],
-//                     rddID: parsedName[1],
-//                     splitIndex: parsedName[2],
-//                     memory: updatedBlocks[i]["Status"]["Memory Size"],
-//                 })
-//             }
-//         }
-//         var shuffleWrite = metrics["Shuffle Write Metrics"]
-//         var shuffleRead = metrics["Shuffle Read Metrics"]
-//         if (info["Launch Time"] < minTime) {
-//             minTime = info["Launch Time"];
-//         }
-//         if (info["Finish Time"] > maxTime) {
-//             maxTime = info["Finish Time"];
-//         }
-//         // console.log(info)
-//         //  console.log(info);
-//         // return [info["Stage ID"],  info["Completion Time"]- info["Submission Time"]]
-//         return {
-//             ctype: "task",
-//             x: stageIndexMapping[x["Stage ID"]],
-//             y: info["Finish Time"] - info["Launch Time"],
-//             task: {
-//                 taskID: info["Task ID"],
-//                 stageID: x["Stage ID"],
-//                 type: x["Task Type"],
-//                 host: info["Host"],
-//                 launchTime: info["Launch Time"],
-//                 finishTime: info["Finish Time"],
-//                 duration: info["Finish Time"] - info["Launch Time"],
-//                 deserializeTime: metrics["Executor Deserialize Time"],
-//                 resultSize: metrics["Result Size"],
-//                 runTime: metrics["Executor Run Time"],
-//                 inputFrom: input == undefined ? undefined : input["Data Read Method"],
-//                 inputSize: input == undefined ? undefined : input["Bytes Read"],
-//                 shuffleWritten: shuffleWrite == undefined ? undefined : shuffleWrite["Shuffle Bytes Written"],
-//                 shuffleWriteTime: shuffleWrite == undefined ? undefined : shuffleWrite["Shuffle Write Time"],
-//                 shuffleReadRemoteBlocks: shuffleRead == undefined ? undefined : shuffleRead["Remote Blocks Fetched"],
-//                 shuffleReadLocalBlocks: shuffleRead == undefined ? undefined : shuffleRead["Local Blocks Fetched"],
-//                 shuffleReadFetchWait: shuffleRead == undefined ? undefined : shuffleRead["Fetch Wait Time"],
-//                 shuffleReadRemoteBytes: shuffleRead == undefined ? undefined : shuffleRead["Remote Bytes Read"],
-//                 block: block,
-//             }
-//         }
-//     });
-
-//     function compare(a, b) {
-//         return a.task.launchTime - b.task.launchTime;
-//     }
-//     tasks.sort(compare);
-//     //  //now that it is sorted, substract the start time of the first
-//     //  minTime = tasks[0].task.launchTime;
-
-
-//     return {
-//         type: 'scatter',
-//         name: "Tasks",
-//         id: 1,
-//         color: 'rgba(68, 170, 213, 0.8)',
-//         data: tasks
-//     }
-// }
-
-function getCompletedTasks2() {
+function getCompletedTasks() {
     var taskCompleted = filterEvent(allEvents, "SparkListenerTaskEnd");
     for (var i = 0; i < taskCompleted.length; i++) {
         var info = taskCompleted[i]["Task Info"]
         var metrics = taskCompleted[i]["Task Metrics"]
-          if (metrics == undefined) {
+        if (metrics == undefined) {
             continue;
         }
-            //can be undefined for some tasks
+        //can be undefined for some tasks
         var input = metrics["Input Metrics"]
 
         var updatedBlocks = metrics["Updated Blocks"]
@@ -487,7 +406,7 @@ function getCompletedTasks2() {
             block = [];
             for (var j = 0; j < updatedBlocks.length; j++) {
                 parsedName = updatedBlocks[j]["Block ID"].split("_");
-                if ( parsedName[0] != "rdd") { //could be a broadcast
+                if (parsedName[0] != "rdd") { //could be a broadcast
                     continue;
                 }
                 block.push({
@@ -500,16 +419,16 @@ function getCompletedTasks2() {
         }
         var shuffleWrite = metrics["Shuffle Write Metrics"]
         var shuffleRead = metrics["Shuffle Read Metrics"]
-        if (info["Launch Time"] < minTime) {
-            minTime = info["Launch Time"];
-        }
+        // if (info["Launch Time"] < minTime) {
+        //     minTime = info["Launch Time"];
+        // }
         if (info["Finish Time"] > maxTime) {
             maxTime = info["Finish Time"];
         }
-        tasks2[info["Task ID"]] = {
+        tasks[info["Task ID"]] = {
             taskID: info["Task ID"],
             stageID: taskCompleted[i]["Stage ID"],
-            stageIndex : stageIndexMapping[taskCompleted[i]["Stage ID"]],
+            stageIndex: stageIndexMapping[taskCompleted[i]["Stage ID"]],
             type: taskCompleted[i]["Task Type"],
             host: info["Host"],
             launchTime: info["Launch Time"],
@@ -541,12 +460,12 @@ function getCompletedTasks2() {
 function getMemoryPerTask() {
     var memoryTask = []
 
-    for (var i in tasks2) {
-        if (!tasks2.hasOwnProperty(i)) {
+    for (var i in tasks) {
+        if (!tasks.hasOwnProperty(i)) {
             continue;
         }
-        var elem = tasks2[i];
-        memoryTask.push( {
+        var elem = tasks[i];
+        memoryTask.push({
             ctype: "task",
             x: elem.taskID,
             y: elem.block == undefined ? 0 : elem.block.reduce(function(pv, cv) {
@@ -566,15 +485,15 @@ function getMemoryPerTask() {
 
 function getMemoryOverTime() {
     var threshold = 1;
-    var current = tasks2[0].launchTime;
+    var current = tasks[0].launchTime;
     var total = 0;
     var memoryTask = [];
 
-     for (var i in tasks2) {
-        if (!tasks2.hasOwnProperty(i)) {
+    for (var i in tasks) {
+        if (!tasks.hasOwnProperty(i)) {
             continue;
         }
-        var elem = tasks2[i];
+        var elem = tasks[i];
         if (elem.launchTime - current > threshold) {
             memoryTask.push({
                 ctype: "task",
@@ -600,11 +519,11 @@ function getMemoryOverTime() {
 
 function getRDD() {
     RDD = {}
-  for (var i in tasks2) {
-        if (!tasks2.hasOwnProperty(i)) {
+    for (var i in tasks) {
+        if (!tasks.hasOwnProperty(i)) {
             continue;
         }
-        var elem = tasks2[i];
+        var elem = tasks[i];
         if (elem.block != undefined) {
             //some blocks were updated by this task
             for (var j = 0; j < elem.block.length; j++) {
@@ -707,14 +626,53 @@ function getShuffleWrite() {
     }
 }
 
-function getTasksStartEnd() {
-    var taskStartEnd = [];
-   for (var i in tasks2) {
-        if (!tasks2.hasOwnProperty(i)) {
+
+function getJobTimeLine() {
+    var jobStartEnd = [];
+    for (var i in jobs) {
+        if (!jobs.hasOwnProperty(i)) {
             continue;
         }
-        var elem = tasks2[i];
-       taskStartEnd.push({
+        var elem = jobs[i];
+        jobStartEnd.push({
+            ctype: "job",
+            x: elem.jobID,
+            low: (elem.submissionTime -minTime)/1000,
+            high: (elem.completionTime-minTime)/1000,
+            details: elem
+        });
+    }
+     return {
+        type: 'columnrange',
+        name: 'Job',
+        id: 6,
+        color: 'rgba(68, 170, 213, 0.8)',
+        data: jobStartEnd,
+         dataLabels: {
+                enabled: true,
+                formatter: function() {
+                    if (this.y === 0) {
+                        return null;
+                    }
+                    return this.y;
+                },
+                style: {
+                    color: 'white'
+                }
+            }
+    }
+}
+
+
+
+function getTasksStartEnd() {
+    var taskStartEnd = [];
+    for (var i in tasks) {
+        if (!tasks.hasOwnProperty(i)) {
+            continue;
+        }
+        var elem = tasks[i];
+        taskStartEnd.push({
             ctype: "task",
             x: elem.taskID,
             low: elem.launchTime,
@@ -722,18 +680,6 @@ function getTasksStartEnd() {
             details: elem
         });
     }
-
-
-    // taskStartEnd = tasks.map(function(elem, index) {
-    //     return {
-    //         ctype: "task",
-    //         x: elem.task.taskID,
-    //         low: elem.task.launchTime,
-    //         high: elem.task.finishTime,
-    //         task: elem.task
-    //     }
-    // });
-
     function compare(a, b) {
         return a.x - b.x;
     }
@@ -758,15 +704,17 @@ function getTasksStartEnd() {
 }
 
 function getBoxPlotData() {
-   var  boxplotData = [];
+    var boxplotData = [];
 
-   for (var i in stages2) {
-        if (!stages2.hasOwnProperty(i)) {
+    for (var i in stages) {
+        if (!stages.hasOwnProperty(i)) {
             continue;
         }
-        var elem = stages2[i];
-        var nums = stats(elem.taskList.map(function(x, index) {return tasks2[x].duration}));
-        boxplotData.push( {
+        var elem = stages[i];
+        var nums = stats(elem.taskList.map(function(x, index) {
+            return tasks[x].duration
+        }));
+        boxplotData.push({
             ctype: "stage",
             x: elem.x,
             low: nums.min(),
@@ -791,11 +739,11 @@ function getBoxPlotData() {
 function getTasksTimePerHost() {
     var hostTime = {}
     var total = 0;
-    for (var i in tasks2) {
-        if (!tasks2.hasOwnProperty(i)) {
+    for (var i in tasks) {
+        if (!tasks.hasOwnProperty(i)) {
             continue;
         }
-        var elem = tasks2[i];
+        var elem = tasks[i];
         if (hostTime[elem.host] == undefined) {
             hostTime[elem.host] = 0;
         }
@@ -826,50 +774,14 @@ function getTasksTimePerHost() {
     }
 }
 //For pie Drawing
-// function getStagesTime() {
-//     var stageTime = {}
-//     var total = 0;
-//     for (var i = 0; i < stages.length; i++) {
-//         var elem = stages[i];
-//         if (stageTime[elem.stage.stageID] == undefined) {
-//             stageTime[elem.stage.stageID] = {};
-//         }
-//         stageTime[elem.stage.stageID] = {
-//             stage: elem.stage,
-//             duration: elem.stage.duration
-//         };
-//         total += elem.stage.duration;
-//     }
-
-//     var data = [];
-//     for (var index in stageTime) {
-//         if (!stageTime.hasOwnProperty(index)) {
-//             continue;
-//         }
-//         var f = Math.round(stageTime[index].duration * 100.0 / total, 2);
-//         data.push({
-//             name: index + " (" + f + " %)",
-//             y: stageTime[index].duration,
-//             stage: stageTime[index].stage,
-
-//         });
-//     }
-//     return {
-//         type: "pie",
-//         name: "Time per stage",
-//         colorByPoint: true,
-//         data: data
-//     }
-// }
-
-function getStagesTime2() {
+function getStagesTime() {
     var stageTime = {}
     var total = 0;
-    for (var i in stages2) {
-        if (!stages2.hasOwnProperty(i)) {
+    for (var i in stages) {
+        if (!stages.hasOwnProperty(i)) {
             continue;
         }
-        var elem = stages2[i];
+        var elem = stages[i];
         if (stageTime[elem.stageID] == undefined) {
             stageTime[elem.stageID] = {};
         }
@@ -933,7 +845,7 @@ function buildTable() {
 
     var han = Handlebars.compile(template);
     s += han({
-        d: tasks2
+        d: tasks
     });
 
     s += "</tbody>"
@@ -945,28 +857,16 @@ function buildTable() {
 }
 
 function linkCompletedTasksToStages() {
-    for (var i = 0; i < tasks.length; i++) {
-        var tID = tasks[i].task.taskID;
-        var tTime = tasks[i].task.duration;
-        var sID = tasks[i].task.stageID;
-        var index = stageIndexMapping[sID];
-        stages[index].stage.taskList.push(tID);
-        stages[index].stage.taskTime.push(tTime);
-    }
-
-}
-
-function linkCompletedTasksToStages2() {
-    for (var index in tasks2) {
-        if (!tasks2.hasOwnProperty(index)) {
+    for (var index in tasks) {
+        if (!tasks.hasOwnProperty(index)) {
             continue;
         }
-        var t = tasks2[index];
+        var t = tasks[index];
         var tID = t.taskID;
         var tTime = t.duration;
         var sID = t.stageID;
-        stages2[sID].taskList.push(tID);
-        // stages2[sID].stage.taskTime.push(tTime);
+        stages[sID].taskList.push(tID);
+        // stages[sID].stage.taskTime.push(tTime);
     }
 }
 
@@ -1073,15 +973,24 @@ function loadStageGraph(element, data, title, xtitle, ytitle, formatter, inverte
 }
 
 function formatter() {
-
+    if (this.point.ctype == 'job') {
+        return jobFormatter(this);
+    }
     if (this.point.ctype == 'stage') {
         return stageFormatter(this);
     }
     if (this.point.ctype == 'task') {
-        //if (this.series.options.id ==1 || this.series.options.id ==2 ){
         return taskFormatter(this);
     }
+}
 
+
+function jobFormatter(th) {
+     var s = '<b>Job : ' + th.point.details.jobID + '</b>';
+         s += '<br> Duration : ' + Math.round((th.point.details.completionTime-th.point.details.submissionTime)/1000,2) + ' s';
+         s += '<br> Stages : [' + th.point.details.stageIDs + ']';
+
+     return s;
 }
 
 function stageFormatter(th) {

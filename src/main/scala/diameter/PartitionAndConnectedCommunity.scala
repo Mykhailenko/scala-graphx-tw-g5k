@@ -31,7 +31,7 @@ object PartitionAndConnectedCommunity {
 
         val sc = new SparkContext(new SparkConf()
             .setSparkHome(System.getenv("SPARK_HOME"))
-            .setAppName(s" PartitionAndConnectedCommunity $nameOfGraph $partitionerName $minEdgePartitions partitions $numberOfCores cores")
+            .setAppName(s"PartitionAndConnectedCommunity $nameOfGraph $partitionerName $minEdgePartitions partitions $numberOfCores cores")
             .set("spark.cores.max", numberOfCores)
             .set("spark.executor.id", "ramambahararambaru")
             .setJars(SparkContext.jarOfClass(this.getClass).toList))

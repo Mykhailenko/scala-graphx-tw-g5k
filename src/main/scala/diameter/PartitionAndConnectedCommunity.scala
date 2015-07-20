@@ -17,7 +17,7 @@ object PartitionAndConnectedCommunity {
 
     def main(args: Array[String]) {
 
-        require(args.length == 5, """|Wrong argument number.
+        require(args.length == 6, """|Wrong argument number.
                                  |Should be 5. Usage: <pathToGrpah> <partiotionerName>
                                  |<filenameWithResult> <minEdgePartitions> <numberOfCores>""".stripMargin)
 
@@ -26,12 +26,14 @@ object PartitionAndConnectedCommunity {
         val filenameWithResult = args(2)
         val minEdgePartitions = args(3).toInt
         val numberOfCores = args(4)
+        val P = args(5)
 
         val nameOfGraph = pathToGrpah.substring(pathToGrpah.lastIndexOf("/") + 1)
 
         val sc = new SparkContext(new SparkConf()
             .setSparkHome(System.getenv("SPARK_HOME"))
-            .setAppName(s"PartitionAndConnectedCommunity $nameOfGraph $partitionerName $minEdgePartitions partitions $numberOfCores cores")
+
+            .setAppName(s"param $P PartitionAndConnectedCommunity $nameOfGraph $partitionerName $minEdgePartitions partitions $numberOfCores cores")
             .set("spark.cores.max", numberOfCores)
             .set("spark.executor.id", "ramambahararambaru")
             .setJars(SparkContext.jarOfClass(this.getClass).toList))

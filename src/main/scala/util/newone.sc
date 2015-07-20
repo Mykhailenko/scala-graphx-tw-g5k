@@ -3,37 +3,52 @@ package util
 import sun.org.mozilla.javascript.ast.Yield
 
 object newone {
-  val qwe = List(1, 1, 1, 2, 2, 3, 3, 3)          //> qwe  : List[Int] = List(1, 1, 1, 2, 2, 3, 3, 3)
-  val qweq = qwe.groupBy(identity(_)).map(x => (x._1, x._2.length)).toArray
-                                                  //> qweq  : Array[(Int, Int)] = Array((2,2), (1,3), (3,3))
-  qwe.filter(x => math.random < 0.1)              //> res0: List[Int] = List()
-
-  2 + 2                                           //> res1: Int(4) = 4
-
-  def zip(a: List[List[Int]], b: List[List[Int]], default: List[Int] = List(0, 0, 0)): List[List[Int]] = {
-    val maxLenght = List(a.length, b.length).max
-
-    def get(lst: List[List[Int]], index: Int): List[Int] = {
-      if (0 <= index && index < lst.length) lst(index) else default
-    }
-
-    val res = for (i <- 0 until maxLenght) yield get(a, i) ++ get(b, i)
-    res.toList
-
-  }                                               //> zip: (a: List[List[Int]], b: List[List[Int]], default: List[Int])List[List[I
-                                                  //| nt]]
-  val s = "-partitionandpagerank-twitter_1.txt-edgepartition1d-7-cores-1434447778082"
-                                                  //> s  : String = -partitionandpagerank-twitter_1.txt-edgepartition1d-7-cores-14
-                                                  //| 34447778082
-  val ar = s.split("-")                           //> ar  : Array[String] = Array("", partitionandpagerank, twitter_1.txt, edgepar
-                                                  //| tition1d, 7, cores, 1434447778082)
-  ar(1).substring("partitionand".length)          //> res2: String = pagerank
-  val ww = ar(2).split("_")                       //> ww  : Array[String] = Array(twitter, 1.txt)
-  ww(0)                                           //> res3: String = twitter
-  ww(1).replaceAll("[^\\d]", "").toInt            //> res4: Int = 1
-  ar(3)                                           //> res5: String = edgepartition1d
-	class A {
+	val a = (0, 10, 1)                        //> a  : (Int, Int, Int) = (0,10,1)
+	val b = (5, 15, 2)                        //> b  : (Int, Int, Int) = (5,15,2)
+	val c = (11, 16, 1)                       //> c  : (Int, Int, Int) = (11,16,1)
+	val ls = Array(a,b,c)                     //> ls  : Array[(Int, Int, Int)] = Array((0,10,1), (5,15,2), (11,16,1))
+	val st = ls.flatMap(x => List(x._1, x._2)).toSet.toList.sorted
+                                                  //> st  : List[Int] = List(0, 5, 10, 11, 15, 16)
+	for(i <- st) yield {
+	  val v = ls.filter(x => x._1 <= i && i <= x._2).map(_._3).sum
+	  (i, v)
+	}                                         //> res0: List[(Int, Int)] = List((0,1), (5,3), (10,3), (11,3), (15,3), (16,1))
 	
-
-	}	
+	  val text = "param-1000-partitionandconnectedcommunity-twitter_5.txt-randomvertexcut-7-partitions-7-cores-1436273175365"
+                                                  //> text  : String = param-1000-partitionandconnectedcommunity-twitter_5.txt-ran
+                                                  //| domvertexcut-7-partitions-7-cores-1436273175365
+	
+	  val pat = "^param-(\\S+)-partitionand(\\S+)-(\\S+)_(\\S+).txt-(\\S+)-(\\S+)-partitions-(\\S+)-cores-(\\S+)$"
+                                                  //> pat  : String = ^param-(\S+)-partitionand(\S+)-(\S+)_(\S+).txt-(\S+)-(\S+)-p
+                                                  //| artitions-(\S+)-cores-(\S+)$
+		val s = "ftp://anon:bah@111.222.333.444:9999/path1/path2/";
+                                                  //> s  : String = ftp://anon:bah@111.222.333.444:9999/path1/path2/
+		val pattern = "^ftp://(\\S+):(\\S+)@(\\S+):(\\d+)(\\S+)$";
+                                                  //> pattern  : String = ^ftp://(\S+):(\S+)@(\S+):(\d+)(\S+)$
+		import java.util.regex.Pattern
+		val p = Pattern.compile(pat);     //> p  : java.util.regex.Pattern = ^param-(\S+)-partitionand(\S+)-(\S+)_(\S+).tx
+                                                  //| t-(\S+)-(\S+)-partitions-(\S+)-cores-(\S+)$
+		
+		val m = p.matcher(text);          //> m  : java.util.regex.Matcher = java.util.regex.Matcher[pattern=^param-(\S+)-
+                                                  //| partitionand(\S+)-(\S+)_(\S+).txt-(\S+)-(\S+)-partitions-(\S+)-cores-(\S+)$ 
+                                                  //| region=0,106 lastmatch=]
+		
+		if (m.matches()) {
+		  for(i <- 0 until m.groupCount()){
+		    println(s"$i:" + m.group(i))
+		  }
+			System.out.println("so!!! if I call m.group() it'll throw IllegalStateException !");
+		} else {
+			System.out.println("so if I call m.group() it'll throw IllegalStateException !");
+		}                                 //> 0:param-1000-partitionandconnectedcommunity-twitter_5.txt-randomvertexcut-7
+                                                  //| -partitions-7-cores-1436273175365
+                                                  //| 1:1000
+                                                  //| 2:connectedcommunity
+                                                  //| 3:twitter
+                                                  //| 4:5
+                                                  //| 5:randomvertexcut
+                                                  //| 6:7
+                                                  //| 7:7
+                                                  //| so!!! if I call m.group() it'll throw IllegalStateException !
+		
 }

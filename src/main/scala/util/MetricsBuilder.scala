@@ -16,7 +16,9 @@ object MetricsBuilder {
 
   var metrics = Set[String]()
 
-  var eventLogFilter = fileParses(parseEventLogFile, getMetainfoFromEventLogFile, listOfFilesEventLog) _
+  val eventLogFilter = fileParses(parseEventLogFile, getMetainfoFromEventLogFile, listOfFilesEventLog) _
+
+  val jsonWorker = fileParses(parseJsonMetricFile, getMetainfoFromJsonMetricFile, listOfFilesJsonMetricFile) _
 
   def addMetaMetric(metric: String): Unit = {
     metrics += metric.replaceAll("\\s+", "").replaceAll("\\.", "");
@@ -29,12 +31,12 @@ object MetricsBuilder {
     }
   }
 
-  def countParsing(rootFolder: File,
+  def values(rootFolder: File,
     graph: String,
     version: String,
     partitioner: String,
     cores: String,
-    metric: String): Int = {
+    metric: String) = {
     var res = Map[Int, Int]()
     val files = listOfFilesEventLog(rootFolder)
     for (file <- files) {
@@ -45,26 +47,67 @@ object MetricsBuilder {
         getString(meta, ".partitioner").toLowerCase().matches(partitioner) &&
         getBigDecimal(meta, ".cores").toLowerCase().matches(cores)) {
         println("work with " + file.getName())
+
         val flatted = parseEventLogFile(eventLogFile)
-        val filtered = flatted.filter(x => x.get(metric).isDefined )
+        val filtered = flatted.filter(x => x.get(metric).isDefined)
         val mapped = filtered.map(getBigDecimal(_, metric).toInt)
-        					 .filter(_ > 1000)
-        
-        val map = mapped.groupBy(x => x)
+        val grouped = mapped.groupBy(x => x)
           .toList
           .map(x => (x._1.toInt, x._2.length))
-        map.foreach(x => {
-          if(res.get(x._1).isDefined){
+
+        grouped.foreach(x => {
+          if (res.get(x._1).isDefined) {
             val v = res.get(x._1).get
             res += (x._1 -> (x._2 + v))
-          }else{
+          } else {
             res += x
-          } 
+          }
         })
       }
     }
-    res.toList.map(_._2).reduce(_ + _ )
+    res.toList.sortWith((a, b) => a._1 < b._1)
   }
+  
+  def valuesNew(rootFolder: File,
+    graph: String,
+    version: String,
+    partitioner: String,
+    cores: String,
+    param : String,
+    metric: String) = {
+    var res = Map[Int, Int]()
+    val files = listOfFilesEventLog(rootFolder)
+    for (file <- files) {
+      val eventLogFile = file
+      val meta = getMetainfoFromEventLogFileNew(file)
+      if (getString(meta, ".graph").toLowerCase().matches(graph) &&
+        getString(meta, ".version").toLowerCase().matches(version) &&
+        getString(meta, ".partitioner").toLowerCase().matches(partitioner) &&
+        getBigDecimal(meta, ".cores").toLowerCase().matches(cores) &&
+        getBigDecimal(meta, ".param").toLowerCase().matches(param)) {
+        println("work with " + file.getName())
+
+        val flatted = parseEventLogFile(eventLogFile)
+        val filtered = flatted.filter(x => x.get(metric).isDefined)
+        val mapped = filtered.map(getBigDecimal(_, metric).toInt)
+        val grouped = mapped.groupBy(x => x)
+          .toList
+          .map(x => (x._1.toInt, x._2.length))
+
+        grouped.foreach(x => {
+          if (res.get(x._1).isDefined) {
+            val v = res.get(x._1).get
+            res += (x._1 -> (x._2 + v))
+          } else {
+            res += x
+          }
+        })
+      }
+    }
+    res.toList.sortWith((a, b) => a._1 < b._1)
+  }
+
+  
   def cumulativeParsing(rootFolder: File,
     graph: String,
     version: String,
@@ -80,22 +123,23 @@ object MetricsBuilder {
         getString(meta, ".version").toLowerCase().matches(version) &&
         getString(meta, ".partitioner").toLowerCase().matches(partitioner) &&
         getBigDecimal(meta, ".cores").toLowerCase().matches(cores)) {
+
         println("work with " + file.getName())
         val flatted = parseEventLogFile(eventLogFile)
-        val filtered = flatted.filter(x => x.get(metric).isDefined )
+        val filtered = flatted.filter(x => x.get(metric).isDefined)
         val mapped = filtered.map(getBigDecimal(_, metric).toInt)
-//        					 .filter(_ > 1000)
-        
+          .filter(_ > 1000)
+
         val map = mapped.groupBy(x => x)
           .toList
           .map(x => (x._1.toInt, x._2.length))
         map.foreach(x => {
-          if(res.get(x._1).isDefined){
+          if (res.get(x._1).isDefined) {
             val v = res.get(x._1).get
             res += (x._1 -> (x._2 + v))
-          }else{
+          } else {
             res += x
-          } 
+          }
         })
       }
     }
@@ -113,6 +157,7 @@ object MetricsBuilder {
       cores: String = ".*"): List[Map[String, JsValue]] = {
     var res = List[Map[String, JsValue]]()
     val files = listOfFile(rootFolder)
+    require(!files.isEmpty, "files is empty")
     for (file <- files) {
       val eventLogFile = file
       val meta = metadataFileParser(file)
@@ -140,16 +185,17 @@ object MetricsBuilder {
 
   def getMetainfoFromEventLogFile(file: File): Map[String, JsValue] = {
     val parentFolderName = file.getParentFile().getName()
-    println("parentFolderName = " + parentFolderName)
-    val splitted = parentFolderName.split("-")
-    println(splitted(1))
-    val algorithm = splitted(1).substring("partitionand".length)
-    val subsplitted = splitted(2).split("_")
-    val graph = subsplitted(0)
-    val version = subsplitted(1).replaceAll("[^\\d]", "")
-    val partitioner = splitted(3)
-    val cores = splitted(4)
+    println(parentFolderName)
+    val first = parentFolderName.split(".txt")(0)
+    val second = parentFolderName.split(".txt")(1)
+    val algorithm = first.split("-")(1).substring("partitionand".length)
+    val gg = first.substring(s"-partitionand$algorithm-".length()).split("_")
+    val graph = gg(0)
+    val version = gg(1).replaceAll("[^\\d]", "")
+    val partitioner = second.split("-")(1)
+    val cores = second.split("-")(2)
 
+    println(s"$algorithm $graph $version $partitioner $cores")
     var res = Map[String, JsValue]()
     res += (".algorithm" -> JsString(algorithm))
     res += (".graph" -> JsString(graph))
@@ -157,6 +203,25 @@ object MetricsBuilder {
     res += (".partitioner" -> JsString(partitioner))
     res += (".cores" -> JsNumber(cores))
     res
+  }
+
+  def getMetainfoFromEventLogFileNew(file: File): Map[String, JsValue] = {
+    import java.util.regex.Pattern
+    val pattern = "^param-(\\S+)-partitionand(\\S+)-(\\S+)_(\\S+).txt-(\\S+)-(\\S+)-partitions-(\\S+)-cores-(\\S+)$" //> pattern  : String = ^ftp://(\S+):(\S+)@(\S+):(\d+)(\S+)$
+    val p = Pattern.compile(pattern);
+    val m = p.matcher(file.getParentFile().getName());
+    if (m.matches()) {
+      var res = Map[String, JsValue]()
+      res += (".algorithm" -> JsString(m.group(2)))
+      res += (".graph" -> JsString(m.group(3)))
+      res += (".version" -> JsString(m.group(4)))
+      res += (".partitioner" -> JsString(m.group(5)))
+      res += (".cores" -> JsNumber(m.group(6)))
+      res += (".param" -> JsNumber(m.group(1)))
+      res
+    } else {
+      Map()
+    }
   }
 
   def parseEventLogFile(file: File): List[Map[String, JsValue]] = {
@@ -186,13 +251,14 @@ object MetricsBuilder {
     val graph = splitted(0)
     val version = splitted(1)
     val partitioner = parentFolder.getName()
-    val cores = file.getName().split(".")(0)
+    val cores = file.getName().split("\\.")(0)
 
     var res = Map[String, JsValue]()
     res += (".graph" -> JsString(graph))
     res += (".version" -> JsString(version))
     res += (".partitioner" -> JsString(partitioner))
     res += (".cores" -> JsNumber(cores))
+    res += (".parent" -> JsString(parentParentFolder.getParentFile().getName()))
     res
   }
 
@@ -241,7 +307,7 @@ object MetricsBuilder {
       require(subFolder.isDirectory())
 
       for (
-        file <- listFiles(subFolder) if file.getName().indexOf("json") != -1
+        file <- listFiles(subFolder) if file.getName().endsWith("json")
       ) {
         res :+= file
       }

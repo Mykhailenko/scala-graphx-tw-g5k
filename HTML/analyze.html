@@ -17,6 +17,9 @@
 <script src='javascript/table2CSV.js'></script>
 
 <style>
+
+
+
 th.sort-header::-moz-selection { background:transparent; }
 th.sort-header::selection      { background:transparent; }
 th.sort-header {
@@ -57,42 +60,106 @@ th {
 </head>
 
 <body>
+
+
+<!-- <nav class="navbar navbar-default" role="navigation">
+   <div class="navbar-header">
+      <a class="navbar-brand" href="#">Spark Log</a>
+   </div>
+   <div>
+      <ul class="nav navbar-nav">
+         <li class="active"><a href="http://www.google.com">google</a></li>
+         <li><a href="#">SVN</a></li>
+         <li class="dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+               Java
+               <b class="caret"></b>
+            </a>
+            <ul class="dropdown-menu">
+               <li><a href="#">jmeter</a></li>
+               <li><a href="#">EJB</a></li>
+               <li><a href="#">Jasper Report</a></li>
+               <li class="divider"></li>
+               <li><a href="#">Separated link</a></li>
+               <li class="divider"></li>
+               <li><a href="#">One more separated link</a></li>
+            </ul>
+         </li>
+      </ul>
+   </div>
+</nav> -->
+
 <div>
-    <ul id="tabs" class="nav nav-tabs">
-        <li class="active" ><a href="#job">Job</a></li>
-        <li><a href="#charts">Stages/Tasks</a></li>
+    <ul id="tabs" class="nav nav-tabs row ">
+        <li  ><a href="#job">Job</a></li>
+        <li ><a href="#charts">Stages/Tasks</a></li>
         <li><a href="#RDD">RDD</a></li>
         <li><a href="#table">Details</a></li>
     </ul>
 </div>
+<div class="container-fluid">
  <div id="content" class="tab-content">
-    <div class="tab-pane active" id="job">
-        <div id="jobInfo" style="width:60%; height:200px; float:left; margin-left : 10px;"></div>
-         <div id="detailsJob" style="margin: 5px; height:200px; overflow : auto; word-wrap: break-word;"></div>
-          <div id="jobsTimeline" style="width:85%; height:300px; float:left"></div>
-          <div id="stagesTimeline" style="width:85%; height:300px; float:left"></div>
-        <div style="float:left">
-            <div id="pieStage" style="float:left"></div>
-            <div id="pieHost" style="float:left"></div>
+    <div class="tab-pane fade  " id="job">
+      <div class="row">
+       <div id="panel" class="col-md-2">
+            <div data-spy="affix" data-offset-top="10">
+                  <!-- <div class="row"> -->
+                    <!-- <div id="side-panel"    data-offset-top="10"> -->
+                 <div id="jobInfo"  ></div>
+                 <div id="detailsJob" ></div>
+                   <!-- </div> -->
+                  <!-- </div> end row -->
+                 <!-- <div class="row"> -->
+
+                <!-- </div> -->
+            </div>
         </div>
+        <div class="col-md-10"  style="background-color: #FFF">
+           <div class="row">
 
+<!--         <div class="col-md-2">
+ -->            <div id="pieStage" class="col-md-6" ></div>
+                <div id="pieHost" class="col-md-6"></div>
+           </div> <!-- end row -->
+           <div class="row">
+               <div id="jobsTimeline" class="col-md-12"></div>
+           </div> <!-- end row -->
+            <div class="row">
+                 <div id="stagesTimeline" class="col-md-12"></div>
+            </div> <!-- end row -->
+        </div> <!-- end col -->
+    </div> <!-- end row -->
+    </div><!-- end tab -->
+    <div class="tab-pane fade " id="charts">
+       <div class="row">
+            <div id="panel2" class="col-md-2">
+                <div data-spy="affix" data-offset-top="10">
+                    <div id="details"></div>
+                </div>
+            </div>  <!-- end col -->
+            <div class="col-md-10">
+                  <div id="container" class="col-md-10"></div>
+                  <div id="shuffleWrite" class="col-md-10"></div>
+                  <div id="tasksTime" class="col-md-10"></div>
+                  <div id="boxplot" class="col-md-10"></div>
+                  <div id="tasksMemory" class="col-md-10"></div>
+            </div> <!-- end col -->
+        </div>
     </div>
-    <div class="tab-pane" id="charts">
-      <div id="container" style="width:85%; height:500px; float:left"></div>
-      <div id="details" style="margin: 5px; height:500px; overflow-x: scroll;"></div>
-      <div id="shuffleWrite" style="width:85%; height:500px; float:left"></div>
-      <div id="tasksTime" style="width:85%; height:500px; float:left"></div>
-      <div id="boxplot" style="width:85%; height:500px; float:left"></div>
-      <div id="tasksMemory" style="width:85%; height:500px; float:left"></div>
 
-    </div>
-    <div class="tab-pane" id="RDD" style="margin: 0 auto;">
-         <div id="rddMemory" style="width:85%; height:500px; float:left"></div>
-         <div id="rddButton" style="margin: 5px; height:500px; width:10%; float:left">
-            <input type="radio" name="rddX" class="mychart" id= "rdd" value="rdd" onclick= "rddX()" checked>RDD
-            <input type="radio" name="rddX" class="mychart" id= "time" value="time" onclick= "rddX()">Time
-         </div>
-         <div id="timeMemory" style="width:85%; height:500px; float:left"></div>
+
+
+    <div class="tab-pane fade " id="RDD">
+       <div class="row">
+             <div id="rddMemory" class="col-md-11"></div>
+             <div id="rddButton" class="col-md-1">
+                  <input type="radio" name="rddX" class="mychart" id= "rdd" value="rdd" onclick= "rddX()" checked>RDD
+                  <input type="radio" name="rddX" class="mychart" id= "time" value="time" onclick= "rddX()">Time
+            </div>
+        </div>
+        <div class="row">
+             <div id="timeMemory" class="col-md-12"></div>
+         </div> <!-- end row-->
    </div>
 
 
@@ -101,12 +168,40 @@ th {
        <div> <table class="table table-condensed table-striped table-responsive text-center table-hover" id="detailedTable">  </table> </div>
    </div>
 </div>
+</div>
 
   <script>
      $.get("EVENT_LOG_1", parseLog);
+     //Call to enable Bootstrap 3 tabs
     $('#tabs a').click(function (e) {
       $(this).tab('show')
     })
+
+    $(function() {
+     var $affixElement = $('div[data-spy="affix"]');
+      $affixElement.width($affixElement.parent().width());
+    });
+    $('#tabs a:first').tab('show')
+
+// var top = $('.thisone').offset().top;
+// $('.trigger').click(function () {
+//     $('.thisone').css('position','');
+//     $('.left2').toggle('slow',function(){
+//         top = $('.thisone').offset().top;
+//     });
+
+
+// });
+
+
+
+    // $(document).scroll(function(){
+    //     $('.alwaystop').css('position','');
+    //     top = $('.alwaystop').offset().top;
+    //   $('.alwaystop').css('position','absolute');   $('.alwaystop').css('top',Math.max(top,$(document).scrollTop()));
+    // });
+
+
 </script>
 </body>
 </html>

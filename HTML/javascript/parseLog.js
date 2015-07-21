@@ -990,7 +990,16 @@ function loadStageGraph(element, data, title, xtitle, ytitle, formatter, inverte
                                 details(this.options)
                             }
                         }
+                    },
+                    allowPointSelect: true,
+            marker: {
+                states: {
+                    select: {
+                        fillColor: 'red',
+                        lineWidth: 0
                     }
+                }
+            }
                 }
 
             },

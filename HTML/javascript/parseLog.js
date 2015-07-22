@@ -803,7 +803,7 @@ function getTasksTimePerHost() {
     // }
     return {
         type: "pie",
-        name: "Time per host",
+        name: "Duration",
         colorByPoint: true,
         data: data
     }
@@ -992,7 +992,7 @@ function loadStageGraph(element, data, title, xtitle, ytitle, formatter, inverte
                         }
                     },
                     allowPointSelect: true,
-            marker: {
+              marker: {
                 states: {
                     select: {
                         fillColor: 'red',
@@ -1045,7 +1045,7 @@ function stageFormatter(th, max) {
     s += '<br> Name : ' + th.stageName;
     s += '<br> Num Tasks : ' + th.numTasks;
     s += '<br> Duration : ' + th.duration + ' ms';
-    s += '<br> Tasks  : '+ prettyArray(th.taskList, max);
+    s += '<br> Tasks  : ' + th.taskList.length ; //+ prettyArray(th.taskList, max);
     return s;
 }
 
@@ -1108,6 +1108,7 @@ function details(point) {
         s += '<br> Duration : ' + elem.duration + ' ms';
         s += '<br> Deserialize : ' + elem.deserializeTime + ' ms';
         s += '<br> Run time : ' + elem.runTime + ' ms';
+        //debugger
         s += '<br> Result Size : ' + Math.round(elem.resultSize / 1024, 2) + ' KB';
         if (elem.inputFrom != undefined) {
             s += '<details>'
@@ -1132,35 +1133,34 @@ function details(point) {
             s += '<br> Remote Bytes Read : ' + Math.round(elem.shuffleReadRemoteBytes / 1024, 2) + " ";
             s += '</details>';
         }
-          $("#details").empty().html(s);
+      //  $("#details").empty().html(s);
     }
 
-     if (point.ctype == 'stage') {
+    if (point.ctype == 'stage') {
         var elem = point.details;
         s = '<b> Stage ID : ' + elem.stageID + '</b>';
         s += '<br> Duration : ' + elem.duration + ' ms';
-        s += '<br> Tasks  : ' + elem.taskList;
-          $("#details").empty().html(s);
+        s += '<details><summary>Tasks</summary>' + prettyArray(elem.taskList);
+   //     $("#details").empty().html(s);
     }
-     if (point.ctype == 'job') {
+    if (point.ctype == 'job') {
         var elem = point.details;
         s = '<b> Job ID : ' + elem.jobID + '</b>';
         s += '<br> Duration : ' + elem.duration + ' ms';
         s += '<details><summary>Stages</summary>'
-        for(var i =0; i<elem.stageIDs.length;i++) {
+        for (var i = 0; i < elem.stageIDs.length; i++) {
             var sta = stages[elem.stageIDs[i]]
             if (sta != undefined) {
-            s+='<br>' + stageFormatter(stages[elem.stageIDs[i]])
+                s += '<br>' + stageFormatter(stages[elem.stageIDs[i]])
+            }
         }
-        }
-        //s += '<br> Tasks  : ' + elem.taskList;
-       // debugger
-       s+='</details>'
-        $("#detailsJob").empty().html(s);
+        s += '</details>'
+
     }
-
-
+    $("#details").empty().html(s);
+      $("#details").css("visibility", "visible");
 }
+
 
 
 function exportToCSV() {

@@ -27,11 +27,12 @@ object PartitionAndConnectedCommunity {
         val minEdgePartitions = args(3).toInt
         val numberOfCores = args(4)
         val P = args(5)
-        
+
         val nameOfGraph = pathToGrpah.substring(pathToGrpah.lastIndexOf("/") + 1)
 
         val sc = new SparkContext(new SparkConf()
             .setSparkHome(System.getenv("SPARK_HOME"))
+
             .setAppName(s"param $P PartitionAndConnectedCommunity $nameOfGraph $partitionerName $minEdgePartitions partitions $numberOfCores cores")
             .set("spark.cores.max", numberOfCores)
             .set("spark.executor.id", "ramambahararambaru")

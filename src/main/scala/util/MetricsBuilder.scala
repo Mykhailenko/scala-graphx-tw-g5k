@@ -252,7 +252,8 @@ object MetricsBuilder {
     val version = splitted(1)
     val partitioner = parentFolder.getName()
     val cores = file.getName().split("\\.")(0)
-
+    
+    
     var res = Map[String, JsValue]()
     res += (".graph" -> JsString(graph))
     res += (".version" -> JsString(version))
@@ -262,6 +263,47 @@ object MetricsBuilder {
     res
   }
 
+  /**
+   *   "/twitter_1/edgepartition1d/7-9.json"
+   * twitter - graph
+   * 1 - version
+   * edgepartition1d - partitioner
+   * 7 - cores
+   * 9 - tour
+   */
+
+  def getMetainfoFromJsonMetricFileNew(file: File): Map[String, JsValue] = {
+
+    val parentFolder = file.getParentFile()
+
+    val parentParentFolder = parentFolder.getParentFile()
+
+//    val splitted = parentParentFolder.getName().split("_")
+
+    val graph = parentParentFolder.getName()//splitted(0)
+//    val version = splitted(1)
+    val partitioner = parentFolder.getName()
+    import java.util.regex.Pattern
+    val pattern = "^(\\S+)-(\\S+).json$" //> pattern  : String = ^ftp://(\S+):(\S+)@(\S+):(\d+)(\S+)$
+    val p = Pattern.compile(pattern);
+    val m = p.matcher(file.getName());
+    require(m.matches())
+    val cores = m.group(1)
+    val tour = m.group(2)  
+    
+    
+    
+    var res = Map[String, JsValue]()
+    res += (".graph" -> JsString(graph))
+    res += (".version" -> JsString("5"))
+    res += (".partitioner" -> JsString(partitioner))
+    res += (".cores" -> JsNumber(cores))
+    res += (".tour" -> JsNumber	(tour))
+//    res += (".parent" -> JsString(parentParentFolder.getParentFile().getName()))
+    res
+  }
+
+  
   def parseJsonMetricFile(file: File): List[Map[String, JsValue]] = {
     List(jsflatter(Source.fromFile(file).mkString.parseJson))
   }
@@ -301,8 +343,8 @@ object MetricsBuilder {
     require(folder.isDirectory())
 
     for (
-      subFolder <- folder.listFiles() if subFolder.isDirectory() &&
-        subFolder.getName().indexOf("_") != -1
+      subFolder <- folder.listFiles() if subFolder.isDirectory() 
+//      &&      subFolder.getName().indexOf("_") != -1
     ) {
       require(subFolder.isDirectory())
 
@@ -555,6 +597,21 @@ object MetricsBuilder {
       List(min, minus95, average, plus95, max)
     } else List(0, 0, 0, 0, 0)
   }
+  
+  def statsInt(data: List[Int]): List[Int] = {
+    if (!data.isEmpty) {
+      data.map(_ / data.length)
+      val average = data.map(_ / data.length).sum
+      val max = data.max
+      val min = data.min
+      // confidence level 90% 	95% 	99%
+      //             zα/2 1.645 1.96 	2.575
+      var percentale95 = 2.575 * stddevInt(data) / Math.sqrt(data.length)
+      val minus95 = average - percentale95
+      val plus95 = average + percentale95
+      List(min, minus95.toInt, average, plus95.toInt, max)
+    } else List(0, 0, 0, 0, 0)
+  }
 
   def stddev(arr: List[BigDecimal]): BigDecimal = {
     var aver = arr.sum / arr.length
@@ -562,4 +619,9 @@ object MetricsBuilder {
       arr.toList.map(x => Math.pow(x.toDouble - aver.toDouble, 2)).sum / arr.length)
   }
 
+  def stddevInt(arr: List[Int]): Double = {
+    var aver = arr.sum / arr.length
+    Math.sqrt(
+      arr.toList.map(x => Math.pow(x.toDouble - aver.toDouble, 2)).sum / arr.length)
+  }
 }

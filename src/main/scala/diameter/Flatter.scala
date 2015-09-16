@@ -1,6 +1,6 @@
 package diameter
 
-import util.JsonLogger
+//import util.JsonLogger
 import org.apache.spark.SparkContext._
 import org.apache.spark._
 import org.apache.spark.graphx._
@@ -22,20 +22,22 @@ object Flatter {
     val sc = new SparkContext(conf)
 
     var relationships: RDD[String] = null;
-    JsonLogger(sc) { logger =>
-      import logger._
+//    JsonLogger(sc) { logger =>
+//      import logger._
 
-      logGraphLoading {
+//      logGraphLoading {
 
         if (args.length == 3) {
           val percentage: Double = args(2).toDouble
-          relationships = sc.textFile(args(0)).flatMap(line => {
-            val fields = line.split(" ")
-            val edges = fields.tail.tail.map(folowerId => folowerId + " " + fields.head)
-            
-            edges.filter(x => x.split("\\s+").length == 2)
-                 .filter(x => math.random < percentage)
-          })
+          relationships = sc.textFile(args(0)).filter(x => math.random < percentage)
+          
+//          relationships = sc.textFile(args(0)).flatMap(line => {
+//            val fields = line.split(" ")
+//            val edges = fields.tail.tail.map(folowerId => folowerId + " " + fields.head)
+//           
+//            edges.filter(x => x.split("\\s+").length == 2)
+//                 .filter(x => math.random < percentage)
+//          })
         } else if (args.length == 2)  {
           relationships = sc.textFile(args(0)).flatMap(line => {
             val fields = line.split(" ")
@@ -46,10 +48,10 @@ object Flatter {
           System.exit(1)
         }
 
-      }
-      logResultSaving {
+//      }
+//      logResultSaving {
         relationships.coalesce(1, true).saveAsTextFile(args(1))
-      }
-    }
+//      }
+//    }
   }
 }

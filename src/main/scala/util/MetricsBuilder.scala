@@ -18,7 +18,7 @@ object MetricsBuilder {
 
   val eventLogFilter = fileParses(parseEventLogFile, getMetainfoFromEventLogFile, listOfFilesEventLog) _
 
-  val jsonWorker = fileParses(parseJsonMetricFile, getMetainfoFromJsonMetricFile, listOfFilesJsonMetricFile) _
+  val jsonWorker = fileParses(parseJsonMetricFile, getMetainfoFromJsonMetricFileNew, listOfFilesJsonMetricFile) _
 
   def addMetaMetric(metric: String): Unit = {
     metrics += metric.replaceAll("\\s+", "").replaceAll("\\.", "");

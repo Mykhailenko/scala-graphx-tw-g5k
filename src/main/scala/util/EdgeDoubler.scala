@@ -11,9 +11,9 @@ object EdgeDoubler {
     val out = new PrintWriter(new FileWriter(new File(args(1))));
     var lines = Source.fromFile(args(0)).getLines
     var i = 0;
-    println("ww")
+//    println("ww")
     for (line <- lines if !line.isEmpty()) {
-      out.println(line)
+//      println(line)
       val a = line.split("\\W+")
       require(a.length == 2, "after spliting length is not 2 but: " + a.length)
       out.println(a.reverse.mkString("\t"))

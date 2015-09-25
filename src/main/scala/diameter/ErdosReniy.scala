@@ -6,86 +6,81 @@ import java.io.BufferedWriter
 import java.util.Queue
 import java.util.concurrent._
 import scala.collection.mutable.MutableList
+import scala.util
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkConf
 
 object ErdosReniy {
   def main(args: Array[String]) {
-    require(args.length >= 4, """|Wrong argument number.
-                                 |Should be 4. Usage: <number of vertices> <probability> <path/to/grpah> <threds>""".stripMargin)
+    require(args.length == 4, "[number of vertices] [number of edges] [path to er-grpah] [number of cores]")
 
-    val N = args(0).toInt
-    val P = args(1).toDouble
-    val pathToGrpah = args(2)
+    val V = args(0).toInt
+    val E = args(1).toLong
+    val path = args(2)
     val T = args(3).toInt
 
-    val out = new PrintWriter(new BufferedWriter(new FileWriter(pathToGrpah)));
+    val sc = new SparkContext(new SparkConf()
+      .setSparkHome(System.getenv("SPARK_HOME"))
+      .setJars(SparkContext.jarOfClass(this.getClass).toList))
 
-    val queue = new LinkedBlockingQueue[MutableList[(Int, Int)]]();
+    val part = E / T
+    val ar = for (i <- 0 until T) yield part.toInt
 
-    val step = N / T
+    val edges = sc.parallelize(ar, T).flatMap(x => {
+      val random = scala.util.Random
+      for (e <- 0 until x) yield {
+        var sourceId = 0
+        var destinationId = 0
+        while (sourceId == destinationId) {
+          sourceId = random.nextInt(V)
+          destinationId = random.nextInt(V)
+        }
+        (sourceId, destinationId)
+      }
+    }).distinct
 
-    new Thread(new Writer(out, T, queue)).start()
+    val dE = E - edges.count
+    require(dE >= 0)
+    val random = scala.util.Random
+    var addedset = Set[(Int, Int)]()
 
-    println("step is " + step)
-    for (a <- 0 until T) {
-      new Thread(new Creator(a * step, a * step + step, N, P, 1000, queue)).start()
+    def notContains(pair: (Int, Int)): Boolean = {
+      !addedset.contains(pair) && !rddcontains(pair)
+    }
+    def rddcontains(pair: (Int, Int)): Boolean = {
+      edges.filter(x => x._1 == pair._1 && x._2 == pair._2).count > 0
+    }
+    def createPair: (Int, Int) = {
+      var sourceId = 0
+      var destinationId = 0
+      while (sourceId == destinationId) {
+        sourceId = random.nextInt(V)
+        destinationId = random.nextInt(V)
+      }
+      (sourceId, destinationId)
     }
 
-  }
+    var addEdges = dE.toInt
+    while (addEdges > 0) {
+      val pairs = (for (e <- 0 until addEdges) yield createPair).toSet.toArray
 
-  class Creator(
-    start: Int,
-    end: Int,
-    N: Int,
-    P: Double,
-    MaxListSize: Int,
-    q: LinkedBlockingQueue[MutableList[(Int, Int)]]) extends Runnable {
+      val existed = edges.filter(x => {
+        pairs.filter(p => p._1 == x._1 && p._2 == x._2).size > 0
+      }).toArray.toSet
 
-    def run() {
-      println(s"Creator start = $start; end = $end; N = $N; P = $P; Max = $MaxListSize")
-      var list: MutableList[(Int, Int)] = MutableList[(Int, Int)]()
-      for (i <- start until end) {
-        if(i % 1000 == 0) println(i)
-        for (j <- 0 until N) {
-          if (math.random < P) {
-            val p : (Int, Int) = (i ,j)
-            list += p
-            if (list.size >= MaxListSize) {
-              q.put(list)
-              list = MutableList[(Int, Int)]()
-            }
-          }
+      for (p <- pairs) {
+        if (!addedset.contains(p) && !existed.contains(p)) {
+          addedset += p
+          addEdges -= 1
         }
       }
-      if (!list.isEmpty) {
-        q.put(list)
-      }
-      q.put(MutableList[(Int, Int)]())
+      println(s"rest $addEdges")
     }
-  }
 
-  class Writer(
-    out: PrintWriter,
-    N: Int,
-    q: LinkedBlockingQueue[MutableList[(Int, Int)]]) extends Runnable {
-    def run() {
-      println("Writer")
-      var C = 0
-      var X = 0
-      while (X < N) {
-        val list = q.take()
-        if (list.isEmpty) {
-          X = X + 1
-        } else {
-          C = C + 1
-          for (pair <- list) {
-            out.println(pair._1 + " " + pair._2)
-          }
-        }
-        println(s"X = $X, C = $C")
-      }
-      out.close();
+    val result = edges.union(sc.parallelize(addedset.toList))
+    require(result.count == E)
 
-    }
+    result.map(x => x._1 + " " + x._2).coalesce(1).saveAsTextFile(path)
 
   }
 

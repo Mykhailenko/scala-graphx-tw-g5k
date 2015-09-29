@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Spark Event Log Analyzer</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <script src="javascript/jquery.min.js"></script>
+    <script src="javascript/highcharts.js"></script>
+    <script src="javascript/highcharts-more.js"></script>
+    <script src="javascript/parseLog.js"></script>
+    <script src="javascript/stats.js"></script>
+    <script src="javascript/bootstrap.min.js"></script>
+    <script src="javascript/handlebars-v3.0.3.js"></script>
+    <script src="javascript/tablesort.min.js"></script>
+    <script src='javascript/tablesort.numeric.js'></script>
+    <script src='javascript/table2CSV.js'></script>
+    <style>
+    th.sort-header::-moz-selection {
+        background: transparent;
+    }
+
+    th.sort-header::selection {
+        background: transparent;
+    }
+
+    th.sort-header {
+        cursor: pointer;
+    }
+
+    th.sort-header::-moz-selection,
+    th.sort-header::selection {
+        background: transparent;
+    }
+
+    table th.sort-header:after {
+        content: '';
+        float: right;
+        margin-top: 7px;
+        border-width: 0 4px 4px;
+        border-style: solid;
+        border-color: #404040 transparent;
+        visibility: hidden;
+    }
+
+    table th.sort-header:hover:after {
+        visibility: visible;
+    }
+
+    table th.sort-up:after,
+    table th.sort-down:after,
+    table th.sort-down:hover:after {
+        visibility: visible;
+        opacity: 0.8;
+    }
+
+    table th.sort-up:after {
+        border-bottom: none;
+        border-width: 4px 4px 0;
+    }
+
+    th {
+        background-color: #CCE6FF;
+        color: black;
+    }
+    /*fix issue where the affix will not reset after scrolling down */
+
+    .affix-bottom {
+        position: relative
+    }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-2">
+                <select id="fileSelect" class="form-control">
+                </select>
+            </div>
+            <div class="col-md-8">
+                <ul id="tabs" class="nav nav-tabs row ">
+                    <li><a href="#job">Job</a></li>
+                    <li><a href="#charts">Stages/Tasks</a></li>
+                    <li><a href="#RDD">RDD</a></li>
+                    <li><a href="#table">Details</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="row">
+            <div id="panel" class="col-md-2">
+                <div data-spy="affix" data-offset-top="10" data-offset-bottom="20">
+                    <div id="jobInfo" class="well"></div>
+                    <!--                 <div id="detailsJob"></div>
+ -->
+                    <div id="details" class="well" style="visibility:hidden"></div>
+                </div>
+            </div>
+            <!-- end col-->
+            <div class="col-md-10">
+                <div id="content" class="tab-content">
+                    <div class="tab-pane fade  " id="job">
+                        <!--  <div class="row">
+                        <div class="col-md-12" style="background-color: #FFF"> -->
+                        <div class="row">
+                            <div id="pieStage" class="col-md-6 chart"></div>
+                            <div id="pieHost" class="col-md-6 chart"></div>
+                        </div>
+                        <!-- end row -->
+                        <div class="row">
+                            <div id="jobsTimeline" class="col-md-12 chart"></div>
+                        </div>
+                        <!-- end row -->
+                        <div class="row">
+                            <div id="stagesTimeline" class="col-md-12 chart"></div>
+                        </div>
+                        <!-- end row -->
+                        <!--  </div>
+                        end col
+                    </div> -->
+                        <!-- end row -->
+                    </div>
+                    <!-- end tab -->
+                    <div class="tab-pane fade " id="charts">
+                        <div class="row">
+                            <!-- <div class="col-md-12"> -->
+                            <div id="container" class="col-md-12 chart"></div>
+                            <div id="shuffleWrite" class="col-md-12 chart"></div>
+                            <div id="tasksTime" class="col-md-12 chart"></div>
+                            <div id="boxplot" class="col-md-12 chart"></div>
+                            <div id="tasksMemory" class="col-md-12 chart"></div>
+                            <!-- </div> -->
+                        </div>
+                    </div>
+                    <div class="tab-pane fade " id="RDD">
+                        <div class="row">
+                            <div id="rddMemory" class="col-md-11 chart"></div>
+                            <div id="rddButton" class="col-md-1">
+                                <input type="radio" name="rddX" class="mychart" id="rdd" value="rdd" onclick="rddX()" checked>RDD
+                                <br>
+                                <input type="radio" name="rddX" class="mychart" id="time" value="time" onclick="rddX()">Time
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div id="timeMemory" class="col-md-12 chart"></div>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="table">
+                        <div class="row">
+                            <button type='button' class='btn  btn-default btn-xs' onclick="exportToCSV()"> Export to CSV </button>
+                        </div>
+                        <div class="row">
+                            <div>
+                                <table class="table table-condensed table-striped table-responsive text-center table-hover" id="detailedTable"> </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    $.get("EVENTLOG_1", parseLog);
+    //Call to enable Bootstrap 3 tabs
+    $('#tabs a').click(function(e) {
+        $(this).tab('show')
+            //reflow all charts from this tab
+            //chart.reflow()
+            //  debugger
+        var target = $($(this).attr('href'))
+
+        $(".chart", target).each(function(i, e) {
+            console.log(e)
+                //new a setTimeout to wait for the animation to  complete
+            setTimeout(function() {
+                $(e).highcharts().reflow()
+            }, 200)
+        })
+    })
+
+    //  $("#rddMemory").highcharts().reflow(); }, 500)
+
+
+
+    $(function() {
+        var $affixElement = $('div[data-spy="affix"]');
+        $affixElement.width($affixElement.parent().width());
+    });
+    $('#tabs a:first').tab('show')
+
+
+    var options = $("#fileSelect");
+    $.getJSON("/logList", function(result) {
+        $.each(result, function(key, value) {
+            //debugger
+            options.append('<option value=' + value.Path + '>' + value.Timestamp + "  " + value.Path + '</option>');
+        });
+        $.get("/currentLog", function(result) {
+            options.val(result)
+        });
+    });
+
+    $("#fileSelect").on('change', function(e) {
+        var optionSelected = $("option:selected", this);
+        var valueSelected = this.value;
+        $.post("analyze", {
+            path: valueSelected
+
+        }, function(data) {
+            console.log("submitted")
+            window.location.href="analyze.html"
+        });
+    });
+
+
+    // var top = $('.thisone').offset().top;
+    // $('.trigger').click(function () {
+    //     $('.thisone').css('position','');
+    //     $('.left2').toggle('slow',function(){
+    //         top = $('.thisone').offset().top;
+    //     });
+
+
+    // });
+
+
+
+    // $(document).scroll(function(){
+    //     $('.alwaystop').css('position','');
+    //     top = $('.alwaystop').offset().top;
+    //   $('.alwaystop').css('position','absolute');   $('.alwaystop').css('top',Math.max(top,$(document).scrollTop()));
+    // });
+    </script>
+</body>
+
+</html>

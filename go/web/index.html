@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Spark Log Analyzer</title>
+    <script type="text/javascript" src="javascript/jquery.min.js"></script>
+    <script type="text/javascript" src="javascript/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="javascript/jquery.tablesorter.js"></script>
+    <link rel="stylesheet" href="css/style.css" type="text/css" media="print, projection, screen" />
+    <link rel="stylesheet" href="css/jquery-ui.theme.css" type="text/css" />
+    <!--      <link rel="stylesheet" href="//code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
+         -->
+</head>
+
+<body>
+    <div id="rectangle">
+        <h1>Log files</h1>
+    </div>
+    <!--          <button type="button" id="openPop" >Add board</button>
+            <button type="button" id="delete" disabled="true"> Delete Selected </button> -->
+    <!-- <button type="button" id="analyze">Analyze</button> -->
+    <div style="width:80%">
+        <table id="myTable2" class="tablesorter" style="table-layout: auto">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Date</th>
+                    <th>Path</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range $index, $element := .}}
+                <tr>
+                    <td>
+                        <input type="checkbox" name="cSelect">
+                    </td>
+                    <td>{{$index}}</td>
+                    <td>{{$element}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    <script>
+    $(document).ready(function() {
+        $("#myTable2").tablesorter();
+    });
+
+    $("input[name='cSelect']").click(function(event) {
+        var target = event.target
+        while (target && target.nodeName != 'TR') {
+            target = target.parentElement;
+        }
+        //console.log(target.cells)
+        var path = target.cells[2].innerHTML
+        console.log(path)
+        $.post("analyze", {
+            path: path
+
+        }, function(data) {
+            console.log("submitted")
+            window.location.href="analyze.html"
+        });
+
+    });
+
+    // $("#analyze").click(function() {
+    //     $.post("add/", {
+
+    //         time: $("#type").val(),
+    //         path: $("#name").val(),
+
+    //     }, function(data) {
+    //         console.log("submitted")
+    //     });
+    // });
+
+
+
+
+    // $('#popup').dialog('open');//open dialog
+    </script>
+</body>
+
+</html>

@@ -10,9 +10,6 @@ import java.io.FileWriter
 
 object PartAndConCompDisk {
   def main(args: Array[String]) {
-    // require(args.length == 5, """|Wrong argument number.
-    // |Should be 5. Usage: <pathToGrpah> <partiotionerName>
-    // |<filenameWithResult> <minEdgePartitions> <numberOfCores>""".stripMargin)
     val pathToGrpah = args(0)
     val partitionerName = args(1)
     val filenameWithResult = args(2)
@@ -25,6 +22,10 @@ object PartAndConCompDisk {
       .setAppName(s" PartitionAndConnectedCommunity $nameOfGraph $partitionerName $minEdgePartitions cores")
       .setJars(SparkContext.jarOfClass(this.getClass).toList))
     
+    val lines = sc.textFile("data.txt")
+    val ss = lines.map(x => x.split(" ")).map(x => (x(0), x(1)))
+        
+    
     val t = System.currentTimeMillis()
     out.println("Connected components ")
     out.println("Context created " + (t - startTime) + " ms")
@@ -33,10 +34,11 @@ object PartAndConCompDisk {
     var conCom: VertexRDD[VertexId] = null
     graph = GraphLoader.edgeListFile(sc, pathToGrpah, false,
       edgeStorageLevel = StorageLevel.MEMORY_AND_DISK,
-      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK,
-      minEdgePartitions = minEdgePartitions) //8 //0
+      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK)
+//      minEdgePartitions = minEdgePartitions) //8 //0
       graph.numVertices
     graph.edges.count // 1
+    
     val t0 = System.currentTimeMillis()
     out.println("Graph loaded for " + (t0 - t) + " ms")
     out.flush()
@@ -49,6 +51,10 @@ object PartAndConCompDisk {
     out.println("conCom.count = " + conCom.count)
     val t2 = System.currentTimeMillis()
     out.println("Connected components calculated " + (t2 - t1) + " ms")
+    out.flush()
+    conCom.map(x => x._1 + " " + x._2).coalesce(1).saveAsTextFile(filenameWithResult + "actual")
+    val differentCommunities = conCom.groupBy(t => t._2).map(x => x._2.size).count
+    out.println("differentCommunities = " + differentCommunities)
     out.flush()
     sc.stop
     out.close

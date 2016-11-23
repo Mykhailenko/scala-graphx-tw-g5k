@@ -20,10 +20,10 @@ object PageRankRunner {
 
     val pathToGrpah = args(0)
     val partitionerName = args(1)
-    val filenameWithResult = args(2)
+    val pathToLogFile = args(2)
     val minEdgePartitions = args(3).toInt
     
-    val log = new PrintWriter(new FileWriter(filenameWithResult));
+    val log = new PrintWriter(new FileWriter(pathToLogFile));
     val startTime = System.currentTimeMillis()
     val nameOfGraph = pathToGrpah.substring(pathToGrpah.lastIndexOf("/") + 1)
     val sc = new SparkContext(new SparkConf()

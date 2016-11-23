@@ -40,7 +40,12 @@ object Permutattor {
     val out = new PrintWriter(new FileWriter(new File(args(1))));
 
     for (line <- lines) {
-      out.println(line.split("\\W+").filter(!_.isEmpty()).map(Integer.parseInt).toList.map(x => mmm.getOrElse(x, 0)).mkString("\t"))
+      out.println(line.split("\\W+")
+                      .filter(!_.isEmpty())
+                      .map(Integer.parseInt)
+                      .toList
+                      .map(x => mmm.getOrElse(x, 0))
+                      .mkString("\t"))
     }
 
     out close

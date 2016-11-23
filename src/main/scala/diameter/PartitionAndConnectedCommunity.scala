@@ -17,7 +17,8 @@ object PartitionAndConnectedCommunity {
 
     def main(args: Array[String]) {
 
-        require(args.length == 6, """|Wrong argument number.
+        require(args.length == 6,
+        """|Wrong argument number.
                                  |Should be 5. Usage: <pathToGrpah> <partiotionerName>
                                  |<filenameWithResult> <minEdgePartitions> <numberOfCores>""".stripMargin)
 

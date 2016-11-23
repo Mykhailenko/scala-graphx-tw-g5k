@@ -14,15 +14,18 @@ import java.util.Random
 import com.google.common.collect.Sets
 import scala.collection.JavaConversions
 
-case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new Random().nextLong() % 1000).toString + ".json", path: String = "./")(body: JsonLogger => Unit) extends Logger {
+case class JsonLogger(sparkContex: SparkContext,
+  fileName: String = "0" + (new Random().nextLong() % 1000).toString + ".json",
+  path: String = "./")(body: JsonLogger => Unit) extends Logger {
 
-  val appStartTime = System.currentTimeMillis(); 
+  val appStartTime = System.currentTimeMillis();
 
   var mainObj: Map[String, String] = Map()
 
-  
+
   def log(key: String, value: String) {
     mainObj += (key -> value)
+    save
   }
 
   def presave {
@@ -51,6 +54,7 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
     out close
   }
 
+
   def saveCSV(graph: Graph[Int, Int]) {
     val out = new PrintWriter(new FileWriter(new File(path + fileName + ".csv")));
 
@@ -71,7 +75,7 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
 //    assert(result.map(x => x._2).reduce(_ + _) == numberOfVerices(graph))
     result
   }
-  
+
   def numberOfVerticesCanBeCut(graph: Graph[Int, Int]): Long = {
     val degree2count = calculcateAverageDegree(graph)
     degree2count.filter(x => x._1 > 1).map(x => x._2).reduce(_ + _)
@@ -80,23 +84,18 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
   def calculateSetOfVerticesNotCatted(graph: Graph[Int, Int]): Set[VertexId] = {
     val q = graph.edges.partitionsRDD
     val p = q.mapValues((V) => (Set(V.srcIds: _*) ++ Set(V.dstIds: _*)))
-    val w = p.map(a => a._2)
+    val w = p.map(a => a._2).flatMap(a => a)
     //    val n = w.reduce(
     //      (a, b) =>
     //        a.union(b).diff(a.intersect(b))
     //        )
-    var ss = w.collect
-    var qq = ss.foldLeft(List[VertexId]())((a, b) => a.toList ++ b.toList)
-    var tr = qq.groupBy(identity).mapValues(v => v.length)
-    var result = tr.filter(a => a._2 == 1).map(x => x._1).toSet
 
-    val out = new PrintWriter(new FileWriter(new File("./debugmfk")));
-    out.println("set of non cutted vertices")
-    for (id <- result) {
-      out.println(id)
-    }
-    out.flush
-    out.close
+    //log("w size", w.count.toString)
+    var result = w.countByValue.filter(_._2 == 1).map(x => x._1).toSet//.reduce((a, b) => a ++ b)
+    //var ss = w.collect /// fails here. collection is too big
+    //var qq = ss.foldLeft(List[VertexId]())((a, b) => a.toList ++ b.toList)
+    //var tr = qq.groupBy(identity).mapValues(v => v.length)
+    //var result = tr.filter(a => a._2 == 1).map(x => x._1).toSet
     result
   }
 
@@ -109,9 +108,9 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
     val ge = graph.edges
     val q = ge.partitionsRDD
     val p = q.mapValues((V) => (Set(V.srcIds: _*) ++ Set(V.dstIds: _*)).size)
-    val w = p.map(a => a._2)
-
-    val replic: Double = w.reduce((a, b) => a + b)
+    val w = p.map(a => a._2.toLong)
+    val replic: Long = w.reduce((a, b) => a + b)
+    log("calculateReplicatoins", replic.toString)
     replic
   }
   def numberOfVerices(graph: Graph[Int, Int]): Long = {
@@ -144,14 +143,13 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
     calculateSetOfVertices(graph).diff(calculateSetOfVerticesNotCatted(graph))
   }
 
-  def communicationalCost(graph: Graph[Int, Int]): Long = {
-    val temp = calculateSetOfVerticesNotCatted(graph)
+  def communicationalCost(graph: Graph[Int, Int], notCatted : Set[VertexId]): Long = {
     // Sum of Fi over i
     val q = graph.edges.partitionsRDD
     val p = q.mapValues((V) => (Set(V.srcIds: _*) ++ Set(V.dstIds: _*)))
     val w = p.map(a => a._2)
-    val z = w.map(a => a.diff(temp))
-    val s = z.map(a => a.size)
+    val z = w.map(a => a.diff(notCatted))
+    val s = z.map(a => a.size.toLong)
     s.reduce(_ + _)
   }
 
@@ -159,20 +157,27 @@ case class JsonLogger(sparkContex: SparkContext, fileName: String = "0" + (new R
     var ar : List[Double] = numberOfEdgesInEachPartition(graph).toList.map(a => a.toDouble)
     Math.sqrt(ar.map(e => Math.pow(e * partitioningNumber(graph) / numberOfEdges(graph) - 1, 2)).sum / partitioningNumber(graph))
   }
-  def logCalculationAfterPartitioning(graph: Graph[Int, Int]) = {
-//    log("appName", sparkContex.getConf.get("spark.executor.id"))
-    log("replicationFactor", (calculateReplicatoins(graph) / numberOfVerices(graph)).toString)
-    log("balance", calculateBalance(graph).toString)
-//    log("communicationCost", communicationalCost(graph).toString)
-    log("vertexCut", (calculateSetOfVerticesCatted(graph).size).toString)
-    log("vertexNonCutted", (calculateSetOfVerticesNotCatted(graph).size).toString)
-    log("numberVertices", numberOfVerices(graph).toString)
-//    log("largestPartition", maxPartitionSize(graph).toString)
+  def logCalculationAfterPartitioning(graph: Graph[Int, Int]) = 0
+  
+  def metrics(graph: Graph[Int, Int]) : Map[String, String] = {
+    val nov = numberOfVerices(graph)
+    log("numberVertices", nov.toString)
     log("numberEdges", numberOfEdges(graph).toString)
     log("numberPartitions", partitioningNumber(graph).toString)
-    log("edgeInPartitiones", numberOfEdgesInEachPartition(graph).toList.mkString(", "))
+
+    log("balance", calculateBalance(graph).toString)
+    log("replicationFactor", (calculateReplicatoins(graph) / nov).toString)
     log("NSTDEV", NSTDEV(graph).toString)
-    log("numberVerticesCanBeCut", numberOfVerticesCanBeCut(graph).toString)
+    log("largestPartition", maxPartitionSize(graph).toString)
+    val notCatted = calculateSetOfVerticesNotCatted(graph)
+    log("vertexNonCutted", notCatted.size.toString)
+
+    log("vertexCut", (nov - notCatted.size).toString)
+    log("communicationCost", communicationalCost(graph, notCatted).toString)
+
+    log("edgeInPartitiones", numberOfEdgesInEachPartition(graph).toList.mkString(", "))
+    mainObj
+    //log("numberVerticesCanBeCut", numberOfVerticesCanBeCut(graph).toString)
 //    saveCSV(graph)
   }
 

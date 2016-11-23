@@ -9,18 +9,23 @@ object Permutattor2 {
   def main(args: Array[String]) {
     require(args.length == 2, "Wrong argument number. Should be 2. Usage: <path_to_grpah> <path_to_permutatted>")
 
-    var mapa = Map[Int, Int]()
+    var mapa = Map[Long, Long]()
+    var sset = Set[Long]()
     var rand = new scala.util.Random
+    val range = Source.fromFile(args(0)).getLines.size
 
-    def getNewIdForId(oldid: Int, range : Int): Int = {
+    var numberOfVertices = 0
+    def getNewIdForId(oldid: Long): Long = {
       if (mapa.contains(oldid)) {
-        mapa.getOrElse(oldid, oldid)
+        mapa.get(oldid).get
       } else {
-        var newid = rand.nextInt(range * 2)
-        while (mapa.contains(newid) || newid <= 0) {
-          newid = rand.nextInt(range * 2)
+        var newid = rand.nextInt
+        while (sset.contains(newid) || newid <= 0) {
+          newid = rand.nextInt
         }
         mapa += (oldid -> newid)
+        sset += newid
+        numberOfVertices = numberOfVertices + 1
         newid
       }
     }
@@ -28,17 +33,33 @@ object Permutattor2 {
     var lines = Source.fromFile(args(0)).getLines
     val out = new PrintWriter(new FileWriter(new File(args(1))));
 
-    val range = Source.fromFile(args(0)).getLines.size
-    for(line <- lines if !line.isEmpty()){
-      var v = line.split("\\W+")
-      if (v.length != 2) {
-        println("azaza")
-        return
+    val percent = range / 100;
+    def printProgress(i : Int) : Unit = {
+      if(i % percent == 0){
+        if (i != 0){
+          println("Processed: " + (i / percent) + "%")
+        }
       }
-      out.println(v.map(x => getNewIdForId(x.toInt, range)).mkString("\t"))  
     }
+    var i = 0
+    for(line <- lines if !line.isEmpty()){
+      printProgress(i)
+
+      var v = line.split("\\W+")
+
+      require(v.length == 2, "Wrong line format: " + line)
+
+      val sourceId = getNewIdForId(v(0).toLong)
+      val destinationId = getNewIdForId(v(1).toLong)
+
+      out.println(sourceId + " " + destinationId)
+
+      i = i + 1
+    }
+    println("number of vertices is " + numberOfVertices)
 
     out close
 
   }
+
 }

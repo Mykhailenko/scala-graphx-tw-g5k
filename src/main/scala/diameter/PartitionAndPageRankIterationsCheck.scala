@@ -15,7 +15,7 @@ import org.apache.spark.storage.StorageLevel
 import java.util.Random
 import org.apache.spark.graphx.lib.PageRank
 
-object PartitionAndPageRankIterations {
+object PartitionAndPageRankIterationsCheck {
 
   def main(args: Array[String]) {
 
@@ -23,6 +23,7 @@ object PartitionAndPageRankIterations {
     val partitionerName = args(1)
     val filenameWithResult = args(2)
     val minEdgePartitions = args(3).toInt
+    val dir = args(4)
     
     val out = new PrintWriter(new FileWriter(filenameWithResult));
     val startTime = System.currentTimeMillis()
@@ -31,7 +32,9 @@ object PartitionAndPageRankIterations {
       .setSparkHome(System.getenv("SPARK_HOME"))
       .setAppName(s" PartitionAndPageRankIterations $nameOfGraph $partitionerName $minEdgePartitions cores")
       .setJars(SparkContext.jarOfClass(this.getClass).toList))
-     val t = System.currentTimeMillis()
+    sc.setCheckpointDir(dir)
+
+    val t = System.currentTimeMillis()
     out.println("PartitionAndPageRankIterations")
     out.println("Context created " + (t - startTime) + " ms")
     out.flush()

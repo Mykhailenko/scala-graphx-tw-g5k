@@ -22,7 +22,7 @@ object ErdosReniy {
     val sc = new SparkContext(new SparkConf()
       .setSparkHome(System.getenv("SPARK_HOME"))
       .setJars(SparkContext.jarOfClass(this.getClass).toList))
-
+    
     val part = E / T
     val ar = for (i <- 0 until T) yield part.toInt
 
@@ -62,6 +62,7 @@ object ErdosReniy {
 
     var addEdges = dE.toInt
     while (addEdges > 0) {
+      println(addEdges)
       val pairs = (for (e <- 0 until addEdges) yield createPair).toSet.toArray
 
       val existed = edges.filter(x => {
@@ -85,5 +86,3 @@ object ErdosReniy {
   }
 
 }
-
-

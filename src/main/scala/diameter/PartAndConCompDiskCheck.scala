@@ -1,38 +1,37 @@
 package diameter
 
-import util.JsonLogger
 import org.apache.spark.SparkContext._
 import org.apache.spark._
 import org.apache.spark.graphx._
-import org.apache.spark.streaming._
-import org.apache.spark.rdd.RDD
-import scala.collection.immutable.Vector
-import sun.security.provider.certpath.Vertex
-import java.io.File
+import org.apache.spark.storage.StorageLevel
+import java.io.PrintWriter
 import java.io.PrintWriter
 import java.io.FileWriter
-import org.apache.spark.storage.StorageLevel
-import java.util.Random
-import org.apache.spark.graphx.lib.PageRank
 
-object PartitionAndPageRankIterations {
-
+object PartAndConCompDiskCheck {
   def main(args: Array[String]) {
-
     val pathToGrpah = args(0)
     val partitionerName = args(1)
     val filenameWithResult = args(2)
     val minEdgePartitions = args(3).toInt
-    
+    val dir = args(4)
+
     val out = new PrintWriter(new FileWriter(filenameWithResult));
     val startTime = System.currentTimeMillis()
     val nameOfGraph = pathToGrpah.substring(pathToGrpah.lastIndexOf("/") + 1)
     val sc = new SparkContext(new SparkConf()
       .setSparkHome(System.getenv("SPARK_HOME"))
-      .setAppName(s" PartitionAndPageRankIterations $nameOfGraph $partitionerName $minEdgePartitions cores")
+      .setAppName(s" PartitionAndConnectedCommunity $nameOfGraph $partitionerName $minEdgePartitions cores")
       .setJars(SparkContext.jarOfClass(this.getClass).toList))
-     val t = System.currentTimeMillis()
-    out.println("PartitionAndPageRankIterations")
+
+    sc.setCheckpointDir(dir)    
+
+    val lines = sc.textFile("data.txt")
+    val ss = lines.map(x => x.split(" ")).map(x => (x(0), x(1)))
+        
+    
+    val t = System.currentTimeMillis()
+    out.println("Connected components ")
     out.println("Context created " + (t - startTime) + " ms")
     out.flush()
     var graph: Graph[Int, Int] = null
@@ -41,20 +40,25 @@ object PartitionAndPageRankIterations {
       edgeStorageLevel = StorageLevel.MEMORY_AND_DISK,
       vertexStorageLevel = StorageLevel.MEMORY_AND_DISK,
       minEdgePartitions = minEdgePartitions) //8 //0
-    //graph.numVertices
+      graph.numVertices
     graph.edges.count // 1
+    
     val t0 = System.currentTimeMillis()
     out.println("Graph loaded for " + (t0 - t) + " ms")
     out.flush()
-    graph = graph.partitionBy(PartitionStrategy.fromString(partitionerName)) //.persist() // 9 // 2 // 10
-    out.println("graph.edges.count = " + graph.edges.count) // 3
+    graph = graph.partitionBy(PartitionStrategy.fromString(partitionerName))//.persist() // 9 // 2 // 10
+    out.println("graph.edges.c ount = " + graph.edges.count) // 3
     val t1 = System.currentTimeMillis()
     out.println("Graph repartitioned " + (t1 - t0) + " ms")
     out.flush()
-    val result = PageRank.run(graph, 10)
-    out.println("result.edges.count = " + result.edges.count)
+    conCom = graph.connectedComponents.vertices
+    out.println("conCom.count = " + conCom.count)
     val t2 = System.currentTimeMillis()
-    out.println("10 Iterations of Page Rank has been calculated " + (t2 - t1) + " ms")
+    out.println("Connected components calculated " + (t2 - t1) + " ms")
+    out.flush()
+    conCom.map(x => x._1 + " " + x._2).coalesce(1).saveAsTextFile(filenameWithResult + "actual")
+    val differentCommunities = conCom.groupBy(t => t._2).map(x => x._2.size).count
+    out.println("differentCommunities = " + differentCommunities)
     out.flush()
     sc.stop
     out.close
